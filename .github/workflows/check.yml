@@ -13,3 +13,4 @@ jobs:
         with:
           node-version: "24"
       - run: npm run check
+      - run: npx --yes wrangler@4 deploy --dry-run --outdir ./dist
