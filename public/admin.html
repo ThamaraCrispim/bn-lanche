@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#1d1714"><meta http-equiv="Cache-Control" content="no-store"><title>BN Lanches — Administração</title><link rel="manifest" href="/manifest.webmanifest"><link rel="icon" href="/icons/bn.svg" type="image/svg+xml"><link rel="stylesheet" href="/cardapio.css"><link rel="stylesheet" href="/admin.css"><script defer src="/install.js"></script><script defer src="/admin.js"></script></head>
+<body>
+<header class="top"><div class="wrap top-inner"><div class="brand"><span class="monogram">BN</span><div><strong>BN LANCHES</strong><small>Área administrativa</small></div></div><a class="admin-back" href="/">← Cardápio</a></div></header>
+<main class="wrap admin-main">
+  <section class="admin-heading"><span class="eyebrow dark">ÁREA DO PROPRIETÁRIO</span><h1>Gerencie seus pedidos</h1><p>Aceite, marque como pronto e confirme o pagamento. Apenas o BN deve acessar esta área.</p></section>
+  <div id="admin-alert" role="status" class="admin-alert" hidden></div>
+  <form id="admin-login" class="login-card">
+    <h2>Entrar como administrador</h2><p>Faça login para consultar os pedidos da cozinha.</p>
+    <label class="field"><b>Usuário</b><input id="username" name="username" autocomplete="username" required maxlength="100"></label>
+    <label class="field"><b>Senha</b><input id="password" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="primary" id="login-submit" type="submit">Entrar no painel</button>
+    <p class="hint">O acesso exige senha configurada com segurança na Cloudflare. Nunca informe sua senha no chat ou no código.</p>
+  </form>
+  <section id="admin-dashboard" hidden>
+    <div class="admin-tools"><div><h2>Pedidos da cozinha</h2><p>Atualização automática enquanto esta tela estiver aberta.</p></div><div><button id="refresh-orders" class="action-outline" type="button">Atualizar</button><button id="logout" class="action-outline" type="button">Sair</button></div></div>
+    <div class="admin-stats"><div><span>Novos</span><strong id="count-new">0</strong></div><div><span>Aceitos</span><strong id="count-accepted">0</strong></div><div><span>Prontos</span><strong id="count-ready">0</strong></div></div>
+    <div id="admin-orders" class="admin-orders" aria-live="polite"></div>
+    <p id="admin-empty" class="admin-empty" hidden>Nenhum pedido em aberto.</p>
+  </section>
+</main>
+</body></html>
