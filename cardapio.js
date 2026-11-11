@@ -1,65 +1,35 @@
-// Cardápio digital — demonstração segura, sem pedidos reais.
+import { menu, extras } from "./catalog.mjs";
 const categories = ["Todos", "Hambúrgueres", "Hot-dogs", "Frango", "Porções", "Bebidas", "Sobremesas"];
-const product = (id, name, cents, category, desc = "") => ({ id, name, cents, category, desc });
-const menu = [
-  product("misto","Misto",1900,"Hambúrgueres","Pão, maionese, tomate, presunto e mussarela."),
-  product("mistao","Mistão",2100,"Hambúrgueres","Pão, maionese, tomate, presunto, ovo e mussarela."),
-  product("x-burguer","X-Burguer",2400,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres e mussarela."),
-  product("x-salada","X-Salada",2600,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, salada e mussarela."),
-  product("x-acebolado","X-Acebolado",2800,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, cebola e mussarela."),
-  product("x-azeitonado","X-Azeitonado",2700,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, azeitona e mussarela."),
-  product("x-catupiry","X-Catupiry",2800,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, catupiry e mussarela."),
-  product("x-calabresa","X-Calabresa",2800,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, calabresa e mussarela."),
-  product("x-vegetariano","X-Vegetariano",2400,"Hambúrgueres","Pão, maionese, tomate, alface, azeitona, milho, ovo, catupiry e mussarela."),
-  product("x-hamburgao","X-Hamburgão",2700,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, ovo, presunto e mussarela."),
-  product("x-americano","X-Americano",2800,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, ovo, alface, presunto e mussarela."),
-  product("x-milho","X-Milho",2700,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, milho e mussarela."),
-  product("x-bacon","X-Bacon",2800,"Hambúrgueres","Pão, maionese, tomate, 2 hambúrgueres, bacon e mussarela."),
-  product("x-tudo","X-Tudo",3300,"Hambúrgueres","Pão, maionese, tomate, milho, azeitona, 2 hambúrgueres, bacon, ovo, catupiry, presunto e mussarela."),
-  product("x-super-tudo","X-Super Tudo",3800,"Hambúrgueres","Pão, maionese, tomate, milho, azeitona, 2 hambúrgueres, 2 salsichas, bacon, ovo, catupiry, presunto e mussarela."),
-  product("x-especial-bn","X-Especial BN",4400,"Hambúrgueres","Pão, maionese, tomate, milho, azeitona, 2 hambúrgueres, bacon, ovo, frango, catupiry, presunto e mussarela."),
-  product("hot-tradicional","Hot-dog Tradicional",1300,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas e batata palha."),
-  product("hot-americano","Hot-dog Americano",2199,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, alface, ovo, presunto e batata palha."),
-  product("hot-bacon","Hot-dog Bacon",2199,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, bacon e batata palha."),
-  product("hot-egg","Hot-dog Egg",1600,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, ovo e batata palha."),
-  product("hot-frango","Hot-dog Frango",2200,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, frango e batata palha."),
-  product("hot-cheddar","Hot-dog Cheddar",2199,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, cheddar e batata palha."),
-  product("hot-catupiry","Hot-dog Catupiry",2199,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, catupiry e batata palha."),
-  product("hot-frango-catupiry","Hot-dog Frango Catupiry",2799,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, frango, catupiry e batata palha."),
-  product("hot-burguer","Hot-dog Burguer",2700,"Hot-dogs","Pão, maionese, ketchup, mostarda, 2 salsichas, 2 hambúrgueres e batata palha."),
-  product("hot-tudo","Hot-dog Tudo",2500,"Hot-dogs","Pão, maionese, ketchup, mostarda, milho, azeitona, salsichas, ovo, bacon, catupiry e batata palha."),
-  product("frango","X-Frango",2799,"Frango","Pão, maionese, tomate, frango e mussarela."),
-  product("frango-catupiry","X-Frango Catupiry",3299,"Frango","Pão, maionese, tomate, frango, catupiry e mussarela."),
-  product("frango-tudo","X-Frango Tudo",3500,"Frango","Pão, maionese, tomate, milho, azeitona, frango, bacon, ovo, presunto, catupiry e mussarela."),
-  product("frango-hamburgao","X-Frango Hamburgão",2999,"Frango","Pão, maionese, tomate, frango, presunto, ovo e mussarela."),
-  product("frango-bacon","X-Frango Bacon",3300,"Frango","Pão, maionese, tomate, frango, bacon e mussarela."),
-  product("frango-cheddar","X-Frango Cheddar",3299,"Frango","Pão, maionese, tomate, frango, cheddar e mussarela."),
-  product("frango-americano","X-Frango Americano",3199,"Frango","Pão, maionese, tomate, frango, presunto, alface, ovo e mussarela."),
-  product("frango-caipira","X-Frango Caipira",3400,"Frango","Pão, maionese, tomate, milho, frango, catupiry, cebola e mussarela."),
-  product("frango-salada","X-Frango Salada",2899,"Frango","Pão, maionese, tomate, frango, alface e mussarela."),
-  product("frango-azeitonado","X-Frango Azeitonado",2900,"Frango","Pão, maionese, tomate, frango, azeitona e mussarela."),
-  product("frango-milho","X-Frango Milho",2700,"Frango","Pão, maionese, tomate, frango, milho e mussarela."),
-  product("batata","Batata frita 500 g",2000,"Porções","Porção de batata frita de 500 gramas."),
-  product("batata-cheddar","Batata c/ cheddar e bacon 500 g",2499,"Porções","Batata frita com cheddar e bacon, 500 gramas."),
-  product("pastelzinho","Pastelzinho de chocolate",499,"Sobremesas","Pastelzinho recheado com chocolate."),
-  product("coca-lata","Coca-Cola lata 350 ml",500,"Bebidas"),
-  product("fanta-lata","Fanta lata 350 ml",500,"Bebidas"),
-  product("sprite-lata","Sprite lata 350 ml",500,"Bebidas"),
-  product("coca-2l","Coca-Cola 2 litros",1200,"Bebidas"),
-  product("sprite-2l","Sprite 2 litros",1100,"Bebidas"),
-  product("fanta-laranja-2l","Fanta Laranja 2 litros",1100,"Bebidas"),
-  product("fanta-uva-2l","Fanta Uva 2 litros",1100,"Bebidas"),
-  product("guarana-maca-2l","Guaraná São Carlos Maçã 2 litros",700,"Bebidas")
-];
-const extras = [
-  ["Catupiry",400],["Presunto (2 fatias)",300],["Azeitona",300],["Frango",600],["Lombo",600],["Alface",200],
-  ["Mussarela (2 fatias)",400],["Bacon",600],["Ovo",300],["Milho",300],["Cebola",300],["Carne de hambúrguer",600]
-].map(([name,cents])=>({name,cents}));
 const centsMoney = cents => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(cents / 100);
 const escapeHtml = v => String(v ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const byId = id => document.getElementById(id);
 const clientStorageKey = "bn-lanches:lembrar-cliente:v1";
-const cart = [];
+const CART_KEY="bn-lanches:carrinho:v1";
+const CLIENT_DRAFT="bn-lanches:cliente-em-andamento:v1";
+const LAST_TRACKING_KEY="bn-lanches:ultimo-pedido:v1";
+function storageRead(storage,key) {try{return JSON.parse(storage.getItem(key)||"null");}catch{return null;}}
+function savedCart(){
+  const data=storageRead(localStorage,CART_KEY);
+  if(!Array.isArray(data))return [];
+  return data.slice(0,30).flatMap(row=>{
+    if(!row||typeof row.id!=="string")return [];
+    const p=menu.find(x=>x.id===row.id);
+    const qty=Number(row.quantity);
+    if(!p||!Number.isInteger(qty)||qty<1||qty>30)return [];
+    const extraIndices=Array.isArray(row.extraIds)?row.extraIds:[];
+    const available=["Hambúrgueres","Hot-dogs","Frango"].includes(p.category);
+    const selected=available?[...new Set(extraIndices)].filter(n=>Number.isInteger(n)&&n>=0&&n<extras.length).map(n=>extras[n]):[];
+    const note=typeof row.note==="string"?row.note.slice(0,180):"";
+    return [{id:p.id,name:p.name,quantity:qty,unitPrice:p.cents,additions:selected,note,lineTotal:(p.cents+selected.reduce((s,e)=>s+e.cents,0))*qty}];
+  });
+}
+const cart=savedCart();
+function saveCart(){
+  try{localStorage.setItem(CART_KEY,JSON.stringify(cart.map(row=>({
+    id:row.id,quantity:row.quantity,note:row.note,
+    extraIds:row.additions.map(e=>extras.findIndex(x=>x.name===e.name)).filter(i=>i>=0)
+  }))));}catch{message("Não foi possível salvar o carrinho neste navegador.");}
+}
 let activeCategory = "Todos", selectedProduct = null, quantity = 1, noticeTimer;
 const emoji = p => p.category === "Hot-dogs" ? "🌭" : p.category === "Bebidas" ? "🥤" : p.category === "Porções" ? "🍟" : p.category === "Sobremesas" ? "🥟" : "🍔";
 function message(txt){const el=byId("notice");el.textContent=txt;el.classList.add("show");clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>el.classList.remove("show"),2800);}
@@ -108,37 +78,129 @@ function addProduct(){
  const note=byId("notes").value.trim();
  const lineTotal=selectedPrice();
  cart.push({id:selectedProduct.id,name:selectedProduct.name,quantity,unitPrice:selectedProduct.cents,additions,note,lineTotal});
+ saveCart();
  close("item-dialog");renderCart();message("Produto adicionado ao carrinho!");
 }
 function readRemembered(){
- try{
-  const s=JSON.parse(localStorage.getItem(clientStorageKey)||"null");
-  if(s && typeof s.name==="string" && typeof s.phone==="string"){
-   byId("client-name").value=s.name;
-   byId("client-phone").value=s.phone;
-   byId("remember").checked=true;
+  const saved=storageRead(localStorage,clientStorageKey);
+  const draft=storageRead(sessionStorage,CLIENT_DRAFT);
+  const data=saved&&typeof saved.name==="string"&&typeof saved.phone==="string"?saved:draft;
+  if(data&&typeof data.name==="string"&&typeof data.phone==="string"){
+    byId("client-name").value=data.name.slice(0,65);
+    byId("client-phone").value=data.phone.slice(0,19);
   }
- }catch{}
+  byId("remember").checked=!!saved;
 }
+function saveClientDraft(){
+  try{sessionStorage.setItem(CLIENT_DRAFT,JSON.stringify({
+    name:byId("client-name").value.slice(0,65),
+    phone:byId("client-phone").value.slice(0,19)
+  }));}catch{}
+}
+
 function validBrazilPhone(phone){
  const digits=phone.replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"");
  return /^\d{10,11}$/.test(digits) && Number(digits.slice(0,2))>=11;
 }
-function previewTracking(evt){
- evt.preventDefault();
- if(!cart.length)return message("Escolha pelo menos um produto.");
- const name=byId("client-name").value.trim(),phone=byId("client-phone").value.trim();
- if(name.length<2){byId("client-name").setCustomValidity("Informe seu nome.");byId("client-name").reportValidity();return;}
- if(!validBrazilPhone(phone)){byId("client-phone").setCustomValidity("Digite um WhatsApp com DDD, por exemplo (16) 99999-9999.");byId("client-phone").reportValidity();return;}
- if(byId("remember").checked){
-  try{localStorage.setItem(clientStorageKey,JSON.stringify({name,phone}));}catch{}
- }else{try{localStorage.removeItem(clientStorageKey);}catch{}}
- byId("tracking-title").textContent="Pedido de exemplo";
- byId("tracking-greeting").textContent=name+", este é o acompanhamento que você verá quando o sistema estiver ativo. Nenhum pedido foi enviado ao BN.";
- close("checkout-dialog");
- dialog("tracking-dialog");
- message("Simulação concluída. Nenhum pedido real foi criado.");
+let currentTicketToken = "";
+const paymentLabels={pix:"Pix na retirada",cartao:"Cartão na retirada",dinheiro:"Dinheiro na retirada"};
+const statusLabels={novo:"Pedido recebido! Aguardando confirmação do BN.",aceito:"Pedido aceito! Vamos preparar seu lanche.",pronto:"Pedido pronto! Já pode retirar no balcão.",retirado:"Pedido retirado. Obrigado pela preferência!",cancelado:"Pedido cancelado. Entre em contato com o BN."};
+async function jsonRequest(path,options){
+  const response=await fetch(path,{cache:"no-store",...options});
+  let data={};
+  try{data=await response.json();}catch{}
+  if(!response.ok)throw Error(data.error||"Não foi possível completar a operação.");
+  return data;
 }
+function saveTicket(token){
+  currentTicketToken=token;
+  try{sessionStorage.setItem(LAST_TRACKING_KEY,token);}catch{}
+  const url=new URL(location.href);
+  url.searchParams.set("pedido",token);
+  history.replaceState({}, "", url.pathname+url.search+url.hash);
+}
+function showTracking(order,code=""){
+  const status=order.status||"novo";
+  byId("tracking-title").textContent="Pedido #"+(order.number||"—");
+  byId("tracking-greeting").textContent=(order.name||"Cliente")+", "+(statusLabels[status]||"Acompanhe seu pedido.");
+  byId("tracking-status").textContent=statusLabels[status]||"Acompanhe seu pedido.";
+  byId("tracking-code").textContent=code?"Seu código de recuperação: "+code+" — guarde para consultar pelo WhatsApp.":"";
+  const reached={novo:0,aceito:1,pronto:2,retirado:3,cancelado:0}[status]||0;
+  const labels=["Pedido recebido","Pedido aceito","Pronto para retirada","Retirado"];
+  byId("tracking-timeline").innerHTML=labels.map((x,i)=>'<li class="'+(i<=reached?"done":"")+'">'+escapeHtml(x)+'</li>').join("");
+  if(status==="cancelado")byId("tracking-status").textContent="Pedido cancelado. Entre em contato com o BN Lanches.";
+  byId("tracking-share").hidden=!currentTicketToken;
+  dialog("tracking-dialog");
+}
+async function trackToken(token,showError=true){
+  if(!/^[a-f0-9]{48}$/.test(token||""))return;
+  try{
+    const order=await jsonRequest("/api/track/"+token);
+    currentTicketToken=token;
+    showTracking(order);
+  }catch(error){if(showError)message(error.message);}
+}
+function showDemoTracking(name){
+  currentTicketToken="";
+  byId("tracking-title").textContent="Prévia de acompanhamento";
+  byId("tracking-greeting").textContent=name+", este é um exemplo. Nenhum pedido foi enviado ao BN.";
+  byId("tracking-status").textContent="Pedido demonstrativo — nenhuma encomenda registrada";
+  byId("tracking-code").textContent="";
+  byId("tracking-share").hidden=true;
+  byId("tracking-timeline").innerHTML='<li class="done">Carrinho montado</li><li>Pedido recebido pelo BN</li><li>Pedido aceito</li><li>Pronto para retirada</li>';
+  dialog("tracking-dialog");
+}
+async function submitCheckout(evt){
+  evt.preventDefault();
+  if(!cart.length)return message("Escolha pelo menos um produto.");
+  const name=byId("client-name").value.trim(),phone=byId("client-phone").value.trim();
+  if(name.length<2){byId("client-name").setCustomValidity("Informe seu nome.");byId("client-name").reportValidity();return;}
+  if(!validBrazilPhone(phone)){byId("client-phone").setCustomValidity("Digite um WhatsApp com DDD.");byId("client-phone").reportValidity();return;}
+  saveClientDraft();
+  if(byId("remember").checked){
+    try{localStorage.setItem(clientStorageKey,JSON.stringify({name,phone}));}catch{}
+  }else{try{localStorage.removeItem(clientStorageKey);}catch{}}
+  const submit=byId("checkout-submit");submit.disabled=true;
+  try{
+    const config=await jsonRequest("/api/config");
+    if(!config.ordersEnabled){
+      close("checkout-dialog");showDemoTracking(name);
+      message("Versão de demonstração: nenhum pedido real foi enviado.");
+      return;
+    }
+    const payload={
+      name,phone,paymentMethod:byId("payment-method").value,
+      requestId:crypto.randomUUID(),
+      items:cart.map(row=>({
+        id:row.id,quantity:row.quantity,note:row.note,
+        extraIds:row.additions.map(e=>extras.findIndex(x=>x.name===e.name)).filter(n=>n>=0)
+      }))
+    };
+    const order=await jsonRequest("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    saveTicket(order.token);
+    cart.splice(0);saveCart();updateCartButton();
+    close("checkout-dialog");showTracking(order,order.code);
+    message("Pedido enviado! Guarde o código ou o link para acompanhar.");
+  }catch(error){message(error.message||"Não foi possível enviar o pedido.");}
+  finally{submit.disabled=false;}
+}
+async function recoverOrder(evt){
+  evt.preventDefault();
+  const phone=byId("lookup-phone").value.trim(),code=byId("lookup-code").value.trim().toUpperCase();
+  if(!validBrazilPhone(phone)||code.length<8){message("Informe o WhatsApp com DDD e o código do pedido.");return;}
+  const button=byId("lookup-submit");button.disabled=true;
+  try{
+    const order=await jsonRequest("/api/lookup",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone,code})});
+    saveTicket(order.token);
+    close("lookup-dialog");showTracking(order);
+  }catch(e){message(e.message);}finally{button.disabled=false;}
+}
+function openMyOrders(){
+  const token=new URL(location.href).searchParams.get("pedido")||currentTicketToken||sessionStorage.getItem(LAST_TRACKING_KEY);
+  if(token && /^[a-f0-9]{48}$/.test(token)){trackToken(token);return;}
+  dialog("lookup-dialog");
+}
+
 byId("categories").addEventListener("click",evt=>{
  const b=evt.target.closest("button[data-category]");if(!b)return;
  activeCategory=b.dataset.category;categoriesHtml();renderMenu();
@@ -154,15 +216,27 @@ byId("add-item").addEventListener("click",addProduct);
 byId("cart-open").addEventListener("click",()=>{renderCart();dialog("cart-dialog");});
 byId("cart-items").addEventListener("click",evt=>{
  const b=evt.target.closest("button[data-remove]");if(!b)return;
- const i=Number(b.dataset.remove);if(Number.isInteger(i)&&i>=0&&i<cart.length){cart.splice(i,1);renderCart();}
+ const i=Number(b.dataset.remove);if(Number.isInteger(i)&&i>=0&&i<cart.length){cart.splice(i,1);saveCart();renderCart();}
 });
 byId("checkout-open").addEventListener("click",()=>{
  if(!cart.length)return;
  byId("checkout-total").textContent=centsMoney(cartTotal());
  readRemembered();close("cart-dialog");dialog("checkout-dialog");
 });
-byId("checkout").addEventListener("submit",previewTracking);
-byId("client-name").addEventListener("input",()=>byId("client-name").setCustomValidity(""));
-byId("client-phone").addEventListener("input",()=>byId("client-phone").setCustomValidity(""));
+byId("checkout").addEventListener("submit",submitCheckout);
+byId("client-name").addEventListener("input",()=>{byId("client-name").setCustomValidity("");saveClientDraft();});
+byId("client-phone").addEventListener("input",()=>{byId("client-phone").setCustomValidity("");saveClientDraft();});
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>close(b.dataset.close)));
+byId("track-open").addEventListener("click",openMyOrders);
+byId("lookup").addEventListener("submit",recoverOrder);
+byId("tracking-share").addEventListener("click",async ()=>{
+  const link=new URL(location.href);link.searchParams.set("pedido",currentTicketToken);
+  try{await navigator.clipboard.writeText(link.href);message("Link de acompanhamento copiado!");}
+  catch{message("Copie o link da barra de endereço do navegador.");}
+});
+const initialToken=new URL(location.href).searchParams.get("pedido");
+if(initialToken && /^[a-f0-9]{48}$/.test(initialToken)){currentTicketToken=initialToken;trackToken(initialToken,false);}
+window.setInterval(()=>{
+  if(byId("tracking-dialog").open && currentTicketToken && !document.hidden)trackToken(currentTicketToken,false);
+},15000);
 categoriesHtml();renderMenu();updateCartButton();
