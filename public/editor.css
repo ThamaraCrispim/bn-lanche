@@ -62,3 +62,6 @@
 .bn-edit-mode .brand{padding-right:17px}
 }
 @media(max-width:390px){.bn-editor-toolbar-title small{display:none}.bn-editor-bottom p{max-width:145px}}
+
+.bn-editor-bottom .bn-cancel-edit{background:#f3ede5;color:#594030}
+@media(max-width:530px){.bn-editor-bottom{gap:9px}.bn-editor-bottom p{display:none}.bn-editor-bottom button{flex:1;max-width:240px}}

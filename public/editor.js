@@ -158,6 +158,7 @@
         pendingCover=file;imagePreview(file,"cover");markDirty();toast("Prévia da nova capa. Toque em Salvar alterações.");
       });
       $("bn-remove-cover").addEventListener("click",async()=>{
+        if(dirty)return toast("Salve ou cancele as alterações pendentes antes de remover a capa.",true);
         if(!confirm("Remover a foto de capa publicada?"))return;
         try{
           await request("/api/admin/site/cover",{method:"DELETE"});

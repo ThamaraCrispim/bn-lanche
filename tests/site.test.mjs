@@ -143,3 +143,30 @@ test("Pedido mostra número real e opção de copiar comprovante, nunca número 
   assert.match(js,/byId\("tracking-number-panel"\)\.hidden=true/);
   assert.match(js,/loadSiteAppearance/);
 });
+
+test("editor visual abre a página verdadeira, com canetinhas apenas após sessão autenticada",()=>{
+  const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
+  const admin=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const editor=readFileSync(new URL("../public/editor.js",import.meta.url),"utf8");
+  const css=readFileSync(new URL("../public/editor.css",import.meta.url),"utf8");
+  const client=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
+  assert.ok(admin.includes('href="/?editar=1"'));
+  assert.ok(html.includes('src="./editor.js"'));
+  assert.ok(html.includes('href="./editor.css"'));
+  assert.match(editor,/searchParams\.get\("editar"\)!=="1"/);
+  assert.match(editor,/request\("\/api\/admin\/session"\)/);
+  assert.match(editor,/if\(!session\.authenticated\)\{location\.replace\("\/admin\.html"\);return;\}/);
+  assert.ok(editor.indexOf('if(!session.authenticated)')<editor.indexOf('document.body.classList.add("bn-edit-mode")'));
+  assert.match(editor,/contenteditable/);
+  assert.match(editor,/bn-save-bottom/);
+  assert.match(editor,/bn-cancel-edit/);
+  assert.match(editor,/bn-view-as-customer/);
+  assert.match(editor,/bn-cover-image/);
+  assert.match(editor,/bn-logo-image/);
+  assert.match(editor,/bn-product-edit/);
+  assert.match(editor,/\/api\/admin\/products/);
+  assert.match(css,/\.bn-edit-inline/);
+  assert.match(client,/bn-editor-products/);
+  assert.ok(admin.includes('<details class="visual-advanced"'));
+  assert.ok(admin.includes('id="products-pane"'));
+});
