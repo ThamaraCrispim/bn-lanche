@@ -123,6 +123,7 @@ function saveTicket(token){
   history.replaceState({}, "", url.pathname+url.search+url.hash);
 }
 function showTracking(order,code=""){
+  byId("tracking-dialog-label").textContent="ACOMPANHAMENTO DO PEDIDO";
   const stored=storageRead(sessionStorage,LAST_RECEIPT_KEY);
   if(code){latestRecoveryCode=code;}
   else if(stored?.token && stored.token===currentTicketToken){latestRecoveryCode=stored.code||"";}
@@ -153,6 +154,7 @@ async function trackToken(token,showError=true){
   }catch(error){if(showError)message(error.message);}
 }
 function showDemoTracking(name){
+  byId("tracking-dialog-label").textContent="ACOMPANHAMENTO — EXEMPLO";
   currentTicketToken="";
   latestReceiptOrder=null;latestRecoveryCode="";
   byId("tracking-number-panel").hidden=true;
@@ -359,3 +361,26 @@ async function loadSiteAppearance(){
   }catch{}
 }
 loadSiteAppearance();
+
+
+async function refreshOrderingStatus(){
+  try{
+    const r=await fetch("/api/config",{cache:"no-store"});
+    if(!r.ok)return;
+    const c=await r.json();
+    const active=c.ordersEnabled===true;
+    byId("app-status").textContent=active?"RECEBENDO PEDIDOS":"PRÉVIA DE TESTES";
+    byId("app-disclaimer").textContent=active?
+      "Confira produtos, valores e adicionais antes de finalizar. Pedidos são para retirada no balcão.":
+      "O envio de pedidos está em testes. Nenhum pedido real será recebido enquanto o serviço não estiver ativado.";
+    byId("app-footer-status").textContent=active?"Pedidos para retirada no balcão":"Demonstração — não recebe pedidos";
+    byId("cart-hint").textContent=active?
+      "Seu pedido será enviado diretamente para a cozinha após confirmar.":
+      "Pedido demonstrativo: nenhum pedido será enviado ao BN.";
+    byId("checkout-hint").textContent=active?
+      "Ao finalizar, você receberá o número do pedido e um link para acompanhar. O pagamento será feito na retirada.":
+      "Atenção: esta demonstração não envia pedidos nem mensagens e não efetua cobrança.";
+    byId("checkout-submit").textContent=active?"Finalizar pedido":"Visualizar demonstração";
+  }catch{}
+}
+refreshOrderingStatus();
