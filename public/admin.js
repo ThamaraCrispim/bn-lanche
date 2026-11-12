@@ -101,11 +101,12 @@ function productCard(p){
   const image=p.photoUrl&&validProductPhoto(p.photoUrl)
     ?'<img src="'+escape(p.photoUrl)+'" loading="lazy" alt="Foto de '+escape(p.name)+'">'
     :'<span aria-hidden="true">📷</span>';
-  return '<article class="admin-product" data-id="'+escape(p.id)+'"><div class="admin-product-image">'+image+'</div><div class="admin-product-body"><b>'+escape(p.name)+'</b><small>'+escape(p.category)+' • '+money(p.cents)+(p.available?'':' • Indisponível')+'</small><div class="admin-photo-actions"><button type="button" class="outline" data-edit-product="'+escape(p.id)+'">Editar produto</button><label class="admin-photo-file">Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" data-photo-file="'+escape(p.id)+'" aria-label="Foto de '+escape(p.name)+'"></label><button type="button" data-upload="'+escape(p.id)+'">Enviar foto</button>'+(p.photoUrl?'<button type="button" class="outline" data-delete-photo="'+escape(p.id)+'">Remover foto</button>':"")+'</div><small class="admin-file-label" data-file-label="'+escape(p.id)+'"></small></div></article>';
+  return '<article class="admin-product" data-id="'+escape(p.id)+'"><div class="admin-product-image">'+image+'</div><div class="admin-product-body"><b>'+escape(p.name)+'</b><small>'+escape(p.category)+' • '+money(p.cents)+(p.archivedAt?' • Retirado do cardápio':p.available?'':' • Indisponível')+'</small><div class="admin-photo-actions"><button type="button" class="outline" data-edit-product="'+escape(p.id)+'">Editar produto</button><button type="button" class="'+(p.archivedAt?'':'danger')+'" data-archive-product="'+escape(p.id)+'">'+(p.archivedAt?'Restaurar':'Retirar')+'</button><label class="admin-photo-file">Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" data-photo-file="'+escape(p.id)+'" aria-label="Foto de '+escape(p.name)+'"></label><button type="button" data-upload="'+escape(p.id)+'">Enviar foto</button>'+(p.photoUrl?'<button type="button" class="outline" data-delete-photo="'+escape(p.id)+'">Remover foto</button>':"")+'</div><small class="admin-file-label" data-file-label="'+escape(p.id)+'"></small></div></article>';
 }
 function renderProducts(){
   const q=$("product-search").value.toLocaleLowerCase("pt-BR").trim();
-  const view=products.filter(p=>(p.name+" "+p.category).toLocaleLowerCase("pt-BR").includes(q));
+  const archived=$("show-archived-products").checked;
+  const view=products.filter(p=>Boolean(p.archivedAt)===archived && (p.name+" "+p.category).toLocaleLowerCase("pt-BR").includes(q));
   $("admin-products").innerHTML=view.map(productCard).join("");
   $("products-empty").hidden=view.length>0;
 }
@@ -134,6 +135,11 @@ function setTab(tab){
 }
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("product-search").addEventListener("input",renderProducts);
+$("show-archived-products").addEventListener("change",renderProducts);
+$("quick-new-product").addEventListener("click",()=>{
+  $("site-advanced").open=true;
+  openProductEditor();
+});
 $("admin-products").addEventListener("change",e=>{
   const input=e.target.closest("input[data-photo-file]");
   if(!input)return;
@@ -183,6 +189,7 @@ function openProductEditor(p=null){
   $("edit-product-category").value=p?.category||"Hambúrgueres";
   $("edit-product-description").value=p?.desc||"";
   $("edit-product-available").checked=p?.available!==false;
+  $("edit-product-photo").value="";
   $("product-editor").showModal();
 }
 $("new-product").addEventListener("click",()=>openProductEditor());
@@ -201,16 +208,48 @@ $("product-form").addEventListener("submit",async event=>{
     cents:Math.round(Number($("edit-product-price").value)*100),
     desc:$("edit-product-description").value.trim(),
     available:$("edit-product-available").checked};
+  const photo=$("edit-product-photo").files?.[0];
+  if(photo&&(!["image/jpeg","image/png","image/webp"].includes(photo.type)||photo.size>2*1024*1024)){
+    alertUser("Escolha JPG, PNG ou WebP de até 2 MB.");return;
+  }
   const button=$("save-product");button.disabled=true;alertUser("");
   try{
     const result=await req(id?"/api/admin/products/"+encodeURIComponent(id):"/api/admin/products",
       id?"PATCH":"POST",payload);
+    if(photo){
+      const response=await fetch("/api/admin/products/"+encodeURIComponent(result.product.id)+"/photo",{
+        method:"POST",credentials:"same-origin",cache:"no-store",
+        headers:{"Content-Type":photo.type},body:photo
+      });
+      const json=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error("Produto criado, mas a foto não foi enviada: "+(json.error||"tente novamente."));
+    }
     productsLoaded=false;
     $("product-editor").close();await loadProducts();
     alertUser("Produto "+result.product.name+" salvo! O cardápio será atualizado.");
     $("admin-alert").classList.add("ok");
   }catch(e){alertUser(e.message);}
   finally{button.disabled=false;}
+});
+
+$("admin-products").addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-archive-product]");
+  if(!button)return;
+  const p=products.find(x=>x.id===button.dataset.archiveProduct);
+  if(!p)return;
+  const archive=!p.archivedAt;
+  const question=archive?
+    'Retirar "'+p.name+'" do cardápio? Ele desaparecerá para clientes, mas poderá ser restaurado. O histórico de pedidos permanece salvo.':
+    'Restaurar "'+p.name+'" ao cardápio?';
+  if(!confirm(question))return;
+  button.disabled=true;alertUser("");
+  try{
+    const result=await req("/api/admin/products/"+encodeURIComponent(p.id)+"/archive","PATCH",{archive});
+    products=products.map(x=>x.id===p.id?result.product:x);
+    renderProducts();
+    alertUser(archive?"Produto retirado do cardápio. Você poderá restaurá-lo depois.":"Produto restaurado!");
+    $("admin-alert").classList.add("ok");
+  }catch(e){alertUser(e.message);button.disabled=false;}
 });
 function renderCustomers(){
   const q=$("customers-search").value.trim().toLocaleLowerCase("pt-BR");
