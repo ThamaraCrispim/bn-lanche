@@ -155,4 +155,91 @@ $("admin-products").addEventListener("click",async e=>{
   }catch(err){alertUser(err.message);$("admin-alert").classList.remove("ok");button.disabled=false;}
 });
 
+
+function openProductEditor(p=null){
+  $("product-dialog-title").textContent=p?"Editar produto":"Adicionar produto";
+  $("edit-product-id").value=p?.id||"";
+  $("edit-product-name").value=p?.name||"";
+  $("edit-product-price").value=p?(p.cents/100).toFixed(2):"";
+  $("edit-product-category").value=p?.category||"Hambúrgueres";
+  $("edit-product-description").value=p?.desc||"";
+  $("edit-product-available").checked=p?.available!==false;
+  $("product-editor").showModal();
+}
+$("new-product").addEventListener("click",()=>openProductEditor());
+$("product-dialog-close").addEventListener("click",()=>$("product-editor").close());
+$("admin-products").addEventListener("click",event=>{
+  const edit=event.target.closest("button[data-edit-product]");
+  if(!edit)return;
+  const p=products.find(p=>p.id===edit.dataset.editProduct);
+  if(p)openProductEditor(p);
+});
+$("product-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const id=$("edit-product-id").value;
+  const payload={name:$("edit-product-name").value.trim(),
+    category:$("edit-product-category").value,
+    cents:Math.round(Number($("edit-product-price").value)*100),
+    desc:$("edit-product-description").value.trim(),
+    available:$("edit-product-available").checked};
+  const button=$("save-product");button.disabled=true;alertUser("");
+  try{
+    const result=await req(id?"/api/admin/products/"+encodeURIComponent(id):"/api/admin/products",
+      id?"PATCH":"POST",payload);
+    productsLoaded=false;
+    $("product-editor").close();await loadProducts();
+    alertUser("Produto "+result.product.name+" salvo! O cardápio será atualizado.");
+    $("admin-alert").classList.add("ok");
+  }catch(e){alertUser(e.message);}
+  finally{button.disabled=false;}
+});
+function renderCustomers(){
+  const q=$("customers-search").value.trim().toLocaleLowerCase("pt-BR");
+  const visible=customers.filter(c=>(String(c.name||"")+" "+String(c.phone||"")).toLocaleLowerCase("pt-BR").includes(q));
+  $("customers-overview").innerHTML=
+    '<div><span>Clientes identificados</span><strong>'+customers.length+'</strong></div>'+
+    '<div><span>Pedidos</span><strong>'+customers.reduce((s,c)=>s+(Number(c.orders_count)||0),0)+'</strong></div>'+
+    '<div><span>Clientes com pagamento</span><strong>'+customers.filter(c=>Number(c.paid_orders)>0).length+'</strong></div>';
+  $("admin-customers").innerHTML=visible.map(c=>
+    '<article class="customer-entry"><span class="customer-initial">'+escape((c.name||"C")[0].toUpperCase())+
+    '</span><div class="customer-info"><strong>'+escape(c.name||"Cliente")+'</strong>'+
+    '<span>WhatsApp: '+escape(c.phone||"—")+'</span>'+
+    '<small>Último pedido: '+new Date(Number(c.last_order_at)).toLocaleString("pt-BR")+'</small></div>'+
+    '<div class="customer-stats"><b>'+escape(c.orders_count)+' pedidos</b>'+
+    '<span>'+money(Number(c.paid_cents)||0)+' recebidos</span></div></article>'
+  ).join("");
+  $("customers-empty").hidden=visible.length>0;
+}
+async function loadCustomers(){
+  try{
+    const data=await req("/api/admin/customers");
+    customers=Array.isArray(data.customers)?data.customers:[];
+    customersLoaded=true;renderCustomers();alertUser("");
+  }catch(e){alertUser("Clientes: "+e.message);}
+}
+$("customers-search").addEventListener("input",renderCustomers);
+const paymentNames={pix:"Pix",cartao:"Cartão",dinheiro:"Dinheiro"};
+async function loadFinance(){
+  try{
+    const data=await req("/api/admin/finance?period="+encodeURIComponent($("finance-period").value));
+    const x=data.report;
+    if(!x||typeof x!=="object")throw Error("Relatório indisponível.");
+    $("finance-received").textContent=money(Number(x.receivedCents)||0);
+    $("finance-count").textContent=String(x.paidOrders||0);
+    $("finance-average").textContent=money(Number(x.ticketAverageCents)||0);
+    $("finance-unpaid").textContent=String(x.unpaidOrders||0);
+    $("finance-methods").innerHTML=(x.byMethod||[]).length?x.byMethod.map(v=>
+      '<div class="method-item"><span>'+escape(paymentNames[v.method]||v.method)+
+      '<small>'+escape(v.count)+' pagamentos</small></span><strong>'+money(Number(v.cents)||0)+'</strong></div>'
+    ).join(""):'<p class="admin-empty">Sem pagamentos neste período.</p>';
+    $("finance-payments").innerHTML=(x.recentPayments||[]).length?x.recentPayments.map(v=>
+      '<div class="method-item"><span><b>#'+escape(v.number)+'</b> '+escape(v.name)+
+      '<small>'+new Date(Number(v.paidAt)).toLocaleString("pt-BR")+'</small></span><strong>'+
+      money(Number(v.cents)||0)+'</strong></div>'
+    ).join(""):'<p class="admin-empty">Nenhum recebimento neste período.</p>';
+    financeLoaded=true;alertUser("");
+  }catch(e){alertUser("Financeiro: "+e.message);}
+}
+$("finance-period").addEventListener("change",loadFinance);
+
 start();
