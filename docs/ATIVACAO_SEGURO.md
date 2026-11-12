@@ -1,43 +1,48 @@
-# BN Lanches — ativação segura (Cloudflare Workers + D1)
+# BN Lanches — ativação com Cloudflare + Supabase
 
-## Publicação
-O GitHub contém o site unificado e uma API preparada para pedidos. Enquanto o banco e os segredos não estiverem configurados, a API retorna erro controlado e **não recebe pedidos reais**. Não compartilhe o endereço com clientes ainda.
+O aplicativo permanece publicado no mesmo domínio da Cloudflare. A interface do cliente está em \`/\`, e o administrador em \`/admin.html\`.
 
-## 1. Banco D1
-Crie um banco chamado `bn-lanche-db` em Cloudflare > Storage & databases > D1, no plano gratuito. No Worker `bn-lanche`, adicione uma vinculação D1 com o nome exato `DB` apontando para esse banco (binding). Execute o conteúdo de `db/schema.sql` no console SQL desse banco antes de ativar pedidos.
+## Status atual
+- Supabase \`bn-lanches\`: projeto criado, na região São Paulo.
+- Banco de produção criado: \`public.bn_orders\` e \`public.bn_login_attempts\`, ambos com RLS e sem acesso público direto.
+- API do Worker adaptada para consultar Supabase via REST no backend.
+- **Pedidos reais continuam desativados** até adicionar credenciais, fazer testes e confirmar o funcionamento.
 
-Não coloque IDs de banco, senhas ou tokens no GitHub. Se preferir usar Wrangler CLI, siga a documentação atual da Cloudflare.
+## 1. Configurar segredos sem colocá-los no GitHub
 
-## 2. Segredos do Worker
-Em Workers & Pages > bn-lanche > Settings > Variables and Secrets, crie os seguintes **Secrets** (não como texto público):
-- `ADMIN_USERNAME`: nome de usuário escolhido pelo proprietário.
-- `ADMIN_PASSWORD`: senha longa e exclusiva, criada pelo proprietário.
-- `SESSION_SECRET`: valor secreto aleatório forte (mínimo 32 caracteres).
-- `TRACKING_SECRET`: outro valor secreto aleatório, diferente do anterior.
+No painel do Cloudflare Workers do projeto \`bn-lanche\`, abra **Settings → Variables and Secrets**.
 
-Não compartilhe senhas ou secrets pelo chat. Nunca ponha essas configurações no JavaScript do navegador.
+Cadastre as seguintes variáveis/segredos:
+- \`SUPABASE_URL\` — valor exato: \`https://wmtgqompgrthddznazdz.supabase.co\` (pode ser variável comum; não é senha).
+- \`SUPABASE_SECRET_KEY\` — crie/copie no painel do projeto BN Lanches em Supabase → Project Settings → API Keys, tipo **secret key** (\`sb_secret_...\`); guardar como **Secret**.
+- \`ADMIN_USERNAME\` — login desejado pelo BN; Secret.
+- \`ADMIN_PASSWORD\` — senha exclusiva e longa escolhida pelo BN; Secret.
+- \`SESSION_SECRET\` — string aleatória forte (mínimo 32 bytes); Secret.
+- \`TRACKING_SECRET\` — outra string aleatória forte (mínimo 32 bytes); Secret.
 
-## 3. Pedidos reais
-Depois de configurar D1 + secrets e TESTAR com pedidos fictícios, adicione a variável `ORDERS_ENABLED` com valor `true` nas configurações do Worker e publique.
+**Não compartilhe nenhum desses valores secretos pelo chat ou em prints.** O Worker usa \`SUPABASE_SECRET_KEY\` somente no servidor. Nunca coloque essa chave no \`public/\` e nunca faça commit dela.
 
-Configure proteção contra spam (recomendado: Cloudflare Turnstile) e backups regulares antes de receber pedidos reais. O código já inclui validações de produto/valor e bloqueio simples de pedidos repetidos, mas não é suficiente para evitar todo abuso.
+Não defina \`ORDERS_ENABLED=true\` até validar o login e os pedidos fictícios de ponta a ponta.
 
-## 4. Como o cliente acompanha
-Após finalizar, o cliente recebe link privado e código de recuperação. Atualizar a página não apaga o ticket, e o aparelho guarda o link se o armazenamento local estiver habilitado. Para recuperar em outro aparelho, usa WhatsApp + código. **Somente o WhatsApp não é suficiente por segurança**, já que terceiros poderiam conhecer esse número.
+## 2. Publicação e login
+Confirme em **Workers & Pages → bn-lanche → Deployments** que o deploy do commit com backend Supabase concluiu com sucesso. Abra \`/api/config\`:
+- Com todos os segredos configurados, \`adminEnabled\` deverá ser \`true\`.
+- \`ordersEnabled\` deve ficar \`false\` até a homologação.
 
-## 5. Administração
-No mesmo site, menu > Entrar como administrador. O painel exige usuário e senha e carrega pedidos do banco. O BN aceita, marca pronto, confirma pagamento e marca retirada.
+Acesse \`/admin.html\` e teste login correto e incorreto sem enviar senhas no chat.
 
-A API usa cookie de sessão HttpOnly/Secure/SameSite=Strict e limita tentativas de login. Ainda é preciso testar os fluxos no ambiente publicado.
+## 3. Testar pedidos
+Quando login, banco e domínio estiverem corretos, habilite temporariamente \`ORDERS_ENABLED=true\` em ambiente de testes controlado.
+- Faça um pedido fictício pelo cardápio.
+- Verifique o aparecimento no painel do BN.
+- Faça Aceitar → Pronto → Confirmar pagamento → Confirmar retirada.
+- Confira acompanhamento por link e por WhatsApp + código.
+- Teste atualizar a página, duplicações e falhas de rede.
 
-## 6. Fluxos a testar antes de divulgar
-1. Pedido simples, adicional, observação e preço calculado no servidor
-2. Atualização de página com carrinho, nome e WhatsApp preservados
-3. Pedido gerado e recuperação por WhatsApp + código em outro dispositivo
-4. Dois pedidos simultâneos e envio duplicado
-5. Login com senha errada, senha correta e saída
-6. Aceitar > Pronto > Pagamento > Retirada e acompanhamento do cliente
-7. Loja offline e fluxo de contingência por telefone/WhatsApp
-8. Testes em Android e iPhone no horário de atendimento
+Durante o teste, use nomes/dados fictícios. Só compartilhe o link com clientes quando passar na homologação e configurar proteção antispam e plano de contingência.
 
-**Nota:** esta versão não inclui edição de fotos/preços via painel nem notificações nativas em segundo plano. São módulos futuros.
+## 4. Segurança e custos
+Supabase Free: controle uso de banco, banda e possíveis pausas de projeto. Cloudflare Free: respeite limites de requisições; planos gratuitos não garantem disponibilidade para um negócio.
+O sistema ainda não tem painel de edição de cardápio/fotos, alertas confiáveis com celular fechado, backups automatizados e uma proteção antispam robusta. Antes de produção real, esses itens precisam de atenção.
+
+O Bella Agenda não participa da infraestrutura nem do banco BN Lanches.
