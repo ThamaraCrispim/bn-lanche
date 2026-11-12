@@ -83,15 +83,53 @@ function parseCart(items) {
 function orderDto(row) {
   return {
     number:row.id,status:row.status,totalCents:row.total_cents,
-    name:row.customer_name,items:JSON.parse(row.items_json),
+    name:row.customer_name,items:typeof row.items_json==="string"?JSON.parse(row.items_json):row.items_json,
     paymentMethod:row.payment_method,paid:!!row.paid,
     createdAt:row.created_at,updatedAt:row.updated_at,
     acceptedAt:row.accepted_at,readyAt:row.ready_at,deliveredAt:row.delivered_at
   };
 }
-function hasDb(env){return Boolean(env.DB);}
-function liveOrders(env){return env.ORDERS_ENABLED==="true" && hasDb(env) && !!env.TRACKING_SECRET;}
-function adminReady(env){return hasDb(env) && !!env.ADMIN_USERNAME && !!env.ADMIN_PASSWORD && !!env.SESSION_SECRET;}
+function hasDb(env) {
+  return Boolean(env.SUPABASE_URL && env.SUPABASE_SECRET_KEY);
+}
+function liveOrders(env) {
+  return env.ORDERS_ENABLED==="true" && hasDb(env) && !!env.TRACKING_SECRET;
+}
+function adminReady(env) {
+  return hasDb(env) && !!env.ADMIN_USERNAME && !!env.ADMIN_PASSWORD && !!env.SESSION_SECRET;
+}
+// A chave secreta do Supabase nunca é enviada ao navegador.
+async function dbRequest(env,table,method="GET",filters="",payload,extraHeaders={}) {
+  if (!hasDb(env)) throw new Error("Banco não configurado.");
+  const base=new URL(env.SUPABASE_URL);
+  if(base.protocol!=="https:" || !base.hostname.endsWith(".supabase.co")) throw new Error("URL de banco inválida.");
+  const url=base.origin+"/rest/v1/"+table+(filters?("?"+filters):"");
+  const headers={
+    "apikey":env.SUPABASE_SECRET_KEY,
+    "Accept":"application/json",
+    "Content-Type":"application/json",
+    "Cache-Control":"no-store",
+    ...extraHeaders
+  };
+  // sb_secret_ não é JWT: nunca enviar como Authorization: Bearer.
+  const response=await fetch(url,{method,headers,body:payload===undefined?undefined:JSON.stringify(payload)});
+  const raw=await response.text();
+  let parsed=null;
+  if(raw){try{parsed=JSON.parse(raw)}catch{}}
+  if(!response.ok){
+    if(response.status===409 || parsed?.code==="23505") throw new Error("Registro duplicado.");
+    console.error("Erro do Supabase",response.status,parsed?.code||"");
+    throw new Error("Falha no banco de dados.");
+  }
+  return parsed;
+}
+const filterEq=(field,value)=>field+"=eq."+encodeURIComponent(String(value));
+const filterLt=(field,value)=>field+"=lt."+encodeURIComponent(String(value));
+const filterGt=(field,value)=>field+"=gt."+encodeURIComponent(String(value));
+async function firstRow(env,table,filters) {
+  const result=await dbRequest(env,table,"GET","select=*&"+filters+"&limit=1");
+  return Array.isArray(result)?(result[0]||null):null;
+}
 function cookie(request) {
   const match=(request.headers.get("Cookie")||"").match(/(?:^|;\s*)bn_session=([^;]+)/);
   return match?match[1]:"";
@@ -124,14 +162,14 @@ async function login(request,env) {
   const ip=request.headers.get("CF-Connecting-IP")||"unknown";
   const rateKey=await hmac(env.SESSION_SECRET,ip+"|"+user);
   const now=Date.now();
-  await env.DB.prepare("DELETE FROM login_attempts WHERE created_at < ?").bind(now-MS_15MIN).run();
-  const count=await env.DB.prepare("SELECT COUNT(*) AS n FROM login_attempts WHERE key=? AND created_at > ?").bind(rateKey,now-MS_15MIN).first();
-  if((count?.n||0)>=5)return error("Muitas tentativas. Aguarde 15 minutos.",429);
+  await dbRequest(env,"bn_login_attempts","DELETE",filterLt("created_at",now-MS_15MIN),undefined,{"Prefer":"return=minimal"});
+  const past=await dbRequest(env,"bn_login_attempts","GET","select=key&"+filterEq("key",rateKey)+"&"+filterGt("created_at",now-MS_15MIN)+"&limit=6");
+  if((past?.length||0)>=5)return error("Muitas tentativas. Aguarde 15 minutos.",429);
   if(!safeEqual(user,env.ADMIN_USERNAME)||!safeEqual(pass,env.ADMIN_PASSWORD)){
-    await env.DB.prepare("INSERT INTO login_attempts(key,created_at) VALUES(?,?)").bind(rateKey,now).run();
+    await dbRequest(env,"bn_login_attempts","POST","",{key:rateKey,created_at:now},{"Prefer":"return=minimal"});
     return error("Usuário ou senha inválidos.",401);
   }
-  await env.DB.prepare("DELETE FROM login_attempts WHERE key=?").bind(rateKey).run();
+  await dbRequest(env,"bn_login_attempts","DELETE",filterEq("key",rateKey),undefined,{"Prefer":"return=minimal"});
   const token=await createSession(user,env);
   return reply({ok:true},200,{"Set-Cookie":sessionCookie(token)});
 }
@@ -144,22 +182,26 @@ async function submitOrder(request,env) {
   const key=input?.requestId;
   if(typeof key!=="string"|| !/^[a-f0-9-]{36}$/i.test(key))return error("Identificação da tentativa inválida.");
   const {clean,total}=parseCart(input.items);
-  const old=await env.DB.prepare("SELECT * FROM orders WHERE request_key=?").bind(key).first();
-  if(old) return error("Este pedido já foi registrado. Consulte seu comprovante anterior.",409);
-  const recent=await env.DB.prepare("SELECT COUNT(*) AS n FROM orders WHERE phone=? AND created_at>?").bind(phone,Date.now()-10*60000).first();
-  if((recent?.n||0)>=4)return error("Muitos pedidos recentes. Entre em contato com a lanchonete.",429);
+  const old=await firstRow(env,"bn_orders",filterEq("request_key",key));
+  if(old)return error("Este pedido já foi registrado. Consulte seu comprovante anterior.",409);
+  const recent=await dbRequest(env,"bn_orders","GET","select=id&"+filterEq("phone",phone)+"&"+filterGt("created_at",Date.now()-10*60000)+"&limit=4");
+  if((recent?.length||0)>=4)return error("Muitos pedidos recentes. Entre em contato com a lanchonete.",429);
   const token=randomHex(24), code=randomCode();
   const digest=await hmac(env.TRACKING_SECRET,phone+"|"+code);
   const now=Date.now();
-  const inserted=await env.DB.prepare(
-    "INSERT INTO orders (request_key,tracking_token,recovery_hash,customer_name,phone,items_json,total_cents,payment_method,status,paid,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?, 'novo',0,?,?) RETURNING id"
-  ).bind(key,token,digest,customerName,phone,JSON.stringify(clean),total,input.paymentMethod,now,now).first();
-  return reply({number:inserted.id,token,code,status:"novo",name:customerName,totalCents:total},201);
+  const result=await dbRequest(env,"bn_orders","POST","",{
+    request_key:key,tracking_token:token,recovery_hash:digest,
+    customer_name:customerName,phone,items_json:clean,total_cents:total,
+    payment_method:input.paymentMethod,status:"novo",paid:false,
+    created_at:now,updated_at:now
+  },{"Prefer":"return=representation"});
+  if(!Array.isArray(result)||!result[0]?.id)throw new Error("Pedido não confirmado pelo servidor.");
+  return reply({number:result[0].id,token,code,status:"novo",name:customerName,totalCents:total},201);
 }
 async function track(token,env) {
   if(!hasDb(env))return error("Acompanhamento ainda não disponível.",503);
   if(!/^[a-f0-9]{48}$/.test(token))return error("Código de acompanhamento inválido.",404);
-  const row=await env.DB.prepare("SELECT * FROM orders WHERE tracking_token=?").bind(token).first();
+  const row=await firstRow(env,"bn_orders",filterEq("tracking_token",token));
   if(!row)return error("Pedido não encontrado.",404);
   return reply(orderDto(row));
 }
@@ -170,7 +212,7 @@ async function recover(request,env) {
   const code=typeof input?.code==="string"?input.code.toUpperCase().replace(/[^A-Z0-9]/g,""):"";
   if(!phone||!/^[A-Z2-9]{10}$/.test(code))return error("Informe WhatsApp e código de recuperação.");
   const hash=await hmac(env.TRACKING_SECRET,phone+"|"+code);
-  const row=await env.DB.prepare("SELECT * FROM orders WHERE phone=? AND recovery_hash=?").bind(phone,hash).first();
+  const row=await firstRow(env,"bn_orders",filterEq("phone",phone)+"&"+filterEq("recovery_hash",hash));
   if(!row)return error("Nenhum pedido encontrado com esses dados.",404);
   return reply({...orderDto(row),token:row.tracking_token});
 }
@@ -178,13 +220,13 @@ async function listOrders(env,url) {
   const filter=url.searchParams.get("status")||"abertos";
   const valid=ORDER_STATES.includes(filter)||filter==="abertos"||filter==="todos";
   if(!valid)return error("Filtro inválido.");
-  let sql="SELECT * FROM orders";
-  const args=[];
-  if(filter==="abertos")sql+=" WHERE status IN ('novo','aceito','pronto')";
-  else if(filter!=="todos"){sql+=" WHERE status=?";args.push(filter);}
-  sql+=" ORDER BY CASE status WHEN 'novo' THEN 0 WHEN 'aceito' THEN 1 WHEN 'pronto' THEN 2 ELSE 3 END, created_at DESC LIMIT 100";
-  const result=await env.DB.prepare(sql).bind(...args).all();
-  return reply({orders:(result.results||[]).map(orderDto)});
+  let options="select=*";
+  if(filter==="abertos")options+="&status=in.(novo,aceito,pronto)";
+  else if(filter!=="todos")options+="&"+filterEq("status",filter);
+  options+="&order=created_at.desc&limit=100";
+  const result=await dbRequest(env,"bn_orders","GET",options);
+  const weight={novo:0,aceito:1,pronto:2,retirado:3,cancelado:4};
+  return reply({orders:(result||[]).map(orderDto).sort((a,b)=>(weight[a.status]??5)-(weight[b.status]??5)||b.createdAt-a.createdAt)});
 }
 async function updateOrder(request,env,id) {
   const input=await body(request);
@@ -196,15 +238,18 @@ async function updateOrder(request,env,id) {
     cancelar:{from:"novo",to:"cancelado",col:"updated_at"}
   };
   const now=Date.now();
+  if(!Number.isSafeInteger(id)||id<1)return error("Pedido inválido.");
   if(action==="pagar"){
-    const row=await env.DB.prepare("UPDATE orders SET paid=1,paid_at=?,updated_at=? WHERE id=? AND status IN ('aceito','pronto') AND paid=0 RETURNING *").bind(now,now,id).first();
-    return row?reply({order:orderDto(row)}):error("Pagamento já registrado ou pedido fora da etapa correta.",409);
+    const filters=filterEq("id",id)+"&status=in.(aceito,pronto)&paid=eq.false";
+    const rows=await dbRequest(env,"bn_orders","PATCH",filters,{paid:true,paid_at:now,updated_at:now},{"Prefer":"return=representation"});
+    return rows?.[0]?reply({order:orderDto(rows[0])}):error("Pagamento já registrado ou pedido fora da etapa correta.",409);
   }
   const x=transitions[action];
   if(!x)return error("Ação inválida.");
-  const extra=action==="retirar"?" AND paid=1":"";
-  const row=await env.DB.prepare("UPDATE orders SET status=?, "+x.col+"=?, updated_at=? WHERE id=? AND status=?"+extra+" RETURNING *").bind(x.to,now,now,id,x.from).first();
-  return row?reply({order:orderDto(row)}):error("Não foi possível atualizar. Confirme a etapa e o pagamento.",409);
+  const filters=filterEq("id",id)+"&"+filterEq("status",x.from)+(action==="retirar"?"&paid=eq.true":"");
+  const patch={status:x.to,[x.col]:now,updated_at:now};
+  const rows=await dbRequest(env,"bn_orders","PATCH",filters,patch,{"Prefer":"return=representation"});
+  return rows?.[0]?reply({order:orderDto(rows[0])}):error("Não foi possível atualizar. Confirme a etapa e o pagamento.",409);
 }
 export default {
   async fetch(request,env) {
