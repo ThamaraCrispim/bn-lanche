@@ -65,3 +65,10 @@
 
 .bn-editor-bottom .bn-cancel-edit{background:#f3ede5;color:#594030}
 @media(max-width:530px){.bn-editor-bottom{gap:9px}.bn-editor-bottom p{display:none}.bn-editor-bottom button{flex:1;max-width:240px}}
+
+/* Adição e retirada diretamente no editor visual */
+.bn-editor-add-product{display:inline-flex;align-items:center;justify-content:center;min-height:49px;margin:0 0 20px;background:#ffe1b3;color:#512b11;border:2px dashed #b27a3d}
+.bn-editor-add-product:hover{background:#ffd18d}
+.bn-editor-archive{border:1px solid #eab4a8;border-radius:10px;background:#fff1ed;color:#a52e24;font-size:12px;font-weight:900;padding:13px 15px;cursor:pointer}
+.bn-editor-archive.is-restore{background:#e6f7eb;color:#17663a;border-color:#a9dab9}
+.bn-editor-archive:disabled{opacity:.6}

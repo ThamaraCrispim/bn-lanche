@@ -137,3 +137,20 @@
 .visual-launch-button{display:flex;width:100%}
 .visual-advanced{margin:15px 0}
 }
+
+/* Ações rápidas de WhatsApp e gestão segura de produtos */
+.admin-message-actions{display:grid;gap:8px;margin-top:14px;padding-top:12px;border-top:1px dashed #e8dfd6}
+.admin-message-actions small{font-size:11px;color:#71645b;line-height:1.45}
+.admin-whatsapp{display:inline-flex;align-items:center;justify-content:center;min-height:43px;padding:12px 14px;border-radius:10px;background:#16834d;color:#fff!important;font-size:12px;font-weight:900;text-align:center;text-decoration:none}
+.admin-whatsapp:hover{background:#11643b}
+.admin-archive-filter{display:inline-flex;gap:8px;align-items:center;max-width:220px;color:#644d3e;font-size:11px;font-weight:800;line-height:1.35}
+.admin-archive-filter input{accent-color:#bd3027;width:19px;height:19px;flex-shrink:0}
+.admin-photo-actions button.danger{background:#fff0ea;color:#a22b22}
+.visual-launch-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.visual-launch-secondary{border:1px solid #e5bc80;border-radius:12px;background:transparent;color:#ffe0a5;padding:14px 16px;min-height:49px;font-size:13px;font-weight:900;cursor:pointer}
+.visual-launch-secondary:hover{background:#593720}
+@media(max-width:650px){
+ .visual-launch-secondary,.visual-launch-button{width:100%}
+ .admin-whatsapp{width:100%}
+ .admin-menu-controls .admin-archive-filter{max-width:unset}
+}
