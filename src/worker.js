@@ -198,7 +198,7 @@ async function submitOrder(request,env) {
     created_at:now,updated_at:now
   },{"Prefer":"return=representation"});
   if(!Array.isArray(result)||!result[0]?.id)throw new Error("Pedido não confirmado pelo servidor.");
-  return reply({number:result[0].id,token,code,status:"novo",name:customerName,totalCents:total},201);
+  return reply({number:result[0].id,token,code,status:"novo",name:customerName,totalCents:total,items:clean,paymentMethod:input.paymentMethod},201);
 }
 async function track(token,env) {
   if(!hasDb(env))return error("Acompanhamento ainda não disponível.",503);

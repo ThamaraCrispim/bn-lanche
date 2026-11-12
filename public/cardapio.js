@@ -103,6 +103,9 @@ function validBrazilPhone(phone){
  return /^\d{10,11}$/.test(digits) && Number(digits.slice(0,2))>=11;
 }
 let currentTicketToken = "";
+let latestReceiptOrder=null;
+let latestRecoveryCode="";
+const LAST_RECEIPT_KEY="bn-lanches:ultimo-comprovante:v1";
 const paymentLabels={pix:"Pix na retirada",cartao:"Cartão na retirada",dinheiro:"Dinheiro na retirada"};
 const statusLabels={novo:"Pedido recebido! Aguardando confirmação do BN.",aceito:"Pedido aceito! Vamos preparar seu lanche.",pronto:"Pedido pronto! Já pode retirar no balcão.",retirado:"Pedido retirado. Obrigado pela preferência!",cancelado:"Pedido cancelado. Entre em contato com o BN."};
 async function jsonRequest(path,options){
@@ -120,11 +123,20 @@ function saveTicket(token){
   history.replaceState({}, "", url.pathname+url.search+url.hash);
 }
 function showTracking(order,code=""){
+  const stored=storageRead(sessionStorage,LAST_RECEIPT_KEY);
+  if(code){latestRecoveryCode=code;}
+  else if(stored?.token && stored.token===currentTicketToken){latestRecoveryCode=stored.code||"";}
+  else{latestRecoveryCode="";}
+  latestReceiptOrder=order;
+  byId("tracking-number-panel").hidden=!Number.isSafeInteger(Number(order.number));
+  byId("tracking-number").textContent=order.number?"#"+order.number:"—";
+  byId("tracking-copy").hidden=!order.number;
+  byId("tracking-number-copy").hidden=!order.number;
   const status=order.status||"novo";
   byId("tracking-title").textContent="Pedido #"+(order.number||"—");
   byId("tracking-greeting").textContent=(order.name||"Cliente")+", "+(statusLabels[status]||"Acompanhe seu pedido.");
   byId("tracking-status").textContent=statusLabels[status]||"Acompanhe seu pedido.";
-  byId("tracking-code").textContent=code?"Seu código de recuperação: "+code+" — guarde para consultar pelo WhatsApp.":"";
+  byId("tracking-code").textContent=latestRecoveryCode?"Código de recuperação: "+latestRecoveryCode+" — guarde para consultar pelo WhatsApp.":"";
   const reached={novo:0,aceito:1,pronto:2,retirado:3,cancelado:0}[status]||0;
   const labels=["Pedido recebido","Pedido aceito","Pronto para retirada","Retirado"];
   byId("tracking-timeline").innerHTML=labels.map((x,i)=>'<li class="'+(i<=reached?"done":"")+'">'+escapeHtml(x)+'</li>').join("");
@@ -142,6 +154,10 @@ async function trackToken(token,showError=true){
 }
 function showDemoTracking(name){
   currentTicketToken="";
+  latestReceiptOrder=null;latestRecoveryCode="";
+  byId("tracking-number-panel").hidden=true;
+  byId("tracking-copy").hidden=true;
+  byId("tracking-number-copy").hidden=true;
   byId("tracking-title").textContent="Prévia de acompanhamento";
   byId("tracking-greeting").textContent=name+", este é um exemplo. Nenhum pedido foi enviado ao BN.";
   byId("tracking-status").textContent="Pedido demonstrativo — nenhuma encomenda registrada";
@@ -178,6 +194,7 @@ async function submitCheckout(evt){
     };
     const order=await jsonRequest("/api/orders",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
     saveTicket(order.token);
+    try{sessionStorage.setItem(LAST_RECEIPT_KEY,JSON.stringify({token:order.token,code:order.code,number:order.number}));}catch{}
     cart.splice(0);saveCart();updateCartButton();
     close("checkout-dialog");showTracking(order,order.code);
     message("Pedido enviado! Guarde o código ou o link para acompanhar.");
@@ -267,3 +284,78 @@ async function loadMenuPhotos(){
   }catch{}
 }
 loadMenuPhotos();
+
+
+function receiptText(order,code="",token=""){
+  const number=Number(order?.number);
+  if(!Number.isSafeInteger(number)||number<1)return "";
+  const lines=[
+    "BN LANCHES — COMPROVANTE",
+    "Pedido #"+number,
+    "Cliente: "+(order.name||"Cliente"),
+    "Situação: "+(statusLabels[order.status]||"Aguardando atualização"),
+    "",
+    "ITENS"
+  ];
+  for(const item of (order.items||[])){
+    lines.push(item.quantity+"× "+item.name+" — "+centsMoney(Number(item.lineCents)||0));
+    for(const add of item.extras||[])lines.push("  + "+add.name);
+    if(item.note)lines.push("  Obs.: "+item.note);
+  }
+  lines.push("", "Total: "+centsMoney(Number(order.totalCents)||0),
+    "Pagamento: "+(paymentLabels[order.paymentMethod]||"Na retirada"));
+  if(code)lines.push("Código para consultar: "+code);
+  if(token&&/^[a-f0-9]{48}$/.test(token)){
+    const url=new URL(location.href);
+    url.searchParams.set("pedido",token);
+    url.searchParams.delete("utm_source");
+    lines.push("Acompanhe: "+url.href);
+  }
+  return lines.join("\n");
+}
+async function copyText(text,success){
+  if(!text)return message("Comprovante indisponível.");
+  try{
+    await navigator.clipboard.writeText(text);
+    message(success);
+  }catch{message("Não foi possível copiar automaticamente neste navegador. Use o link de acompanhamento.");}
+}
+byId("tracking-copy").addEventListener("click",()=>{
+  copyText(receiptText(latestReceiptOrder,latestRecoveryCode,currentTicketToken),"Comprovante com o número do pedido copiado!");
+});
+byId("tracking-number-copy").addEventListener("click",()=>{
+  const id=latestReceiptOrder?.number;
+  if(id)copyText("BN Lanches — Pedido #"+id,"Número do pedido copiado!");
+});
+async function loadSiteAppearance(){
+  try{
+    const response=await fetch("/api/site",{cache:"no-store"});
+    if(!response.ok)return;
+    const {site}=await response.json();
+    if(!site||typeof site!=="object")return;
+    byId("store-header-name").textContent=site.storeName||"BN Lanches";
+    byId("store-footer-name").textContent=site.storeName||"BN Lanches";
+    byId("store-tagline").textContent=site.tagline||"";
+    byId("store-hero-title").textContent=site.heroTitle||"Seu lanche favorito,";
+    byId("store-hero-emphasis").textContent=site.heroEmphasis||"do seu jeito.";
+    byId("store-hero-description").textContent=site.heroDescription||"";
+    const prefix="https://wmtgqompgrthddznazdz.supabase.co/storage/v1/object/public/bn-menu/";
+    const safeImg=url=>{
+      if(typeof url!=="string"||!url.startsWith(prefix))return false;
+      try{
+        const u=new URL(url);
+        return u.hostname==="wmtgqompgrthddznazdz.supabase.co"&&u.protocol==="https:";
+      }catch{return false;}
+    };
+    byId("store-logo").src=safeImg(site.logoUrl)?site.logoUrl:"/icons/bn-original.svg";
+    const hero=document.querySelector(".hero");
+    if(safeImg(site.coverUrl)){
+      hero.classList.add("has-cover");
+      hero.style.backgroundImage="linear-gradient(90deg,rgba(12,9,8,.84),rgba(12,9,8,.48)),url("+JSON.stringify(site.coverUrl)+")";
+    } else {
+      hero.classList.remove("has-cover");
+      hero.style.removeProperty("background-image");
+    }
+  }catch{}
+}
+loadSiteAppearance();
