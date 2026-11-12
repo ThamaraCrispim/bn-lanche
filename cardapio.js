@@ -38,7 +38,7 @@ function close(id){const x=byId(id);if(x.open)x.close();}
 function categoriesHtml(){byId("categories").innerHTML=categories.map(c=>'<button type="button" class="category '+(activeCategory===c?"active":"")+'" data-category="'+escapeHtml(c)+'" aria-pressed="'+(activeCategory===c)+'">'+escapeHtml(c)+'</button>').join("");}
 function renderMenu(){
  const q=byId("search").value.trim().toLocaleLowerCase("pt-BR");
- const found=menu.filter(p=>(activeCategory==="Todos"||p.category===activeCategory) && (!q||(p.name+" "+p.desc).toLocaleLowerCase("pt-BR").includes(q)));
+ const found=menu.filter(p=>(document.body.classList.contains("bn-edit-mode")||p.available!==false) && (activeCategory==="Todos"||p.category===activeCategory) && (!q||(p.name+" "+p.desc).toLocaleLowerCase("pt-BR").includes(q)));
  byId("empty").hidden=found.length>0;
  byId("products").innerHTML=found.map(p=>'<article class="product"><div class="product-photo">'+(p.photoUrl?'<img loading="lazy" src="'+escapeHtml(p.photoUrl)+'" alt="Foto de '+escapeHtml(p.name)+'">':'<span aria-hidden="true">'+emoji(p)+'</span>')+'</div><div class="product-content"><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.desc||p.category)+'</p><div class="product-bottom"><strong class="price">'+escapeHtml(centsMoney(p.cents))+'</strong><button type="button" data-product="'+escapeHtml(p.id)+'">Adicionar +</button></div></div></article>').join("");
 }
@@ -266,6 +266,7 @@ async function loadMenuPhotos(){
     const response=await fetch("/api/menu",{cache:"no-store"});
     if(!response.ok)return;
     const data=await response.json();
+    if(document.body.classList.contains("bn-edit-mode"))return;
     if(!Array.isArray(data.products) || data.products.length===0)return;
     const valid=data.products.filter(p=>p&&typeof p.id==="string"&&typeof p.name==="string"&&Number.isInteger(p.cents)&&p.cents>0);
     if(valid.length===0)return;
@@ -384,3 +385,23 @@ async function refreshOrderingStatus(){
   }catch{}
 }
 refreshOrderingStatus();
+
+
+// Ponte para o editor autenticado. A página pública nunca recebe esses dados admin.
+window.addEventListener("bn-editor-products",event=>{
+  if(!document.body.classList.contains("bn-edit-mode"))return;
+  const rows=event.detail?.products;
+  if(!Array.isArray(rows))return;
+  const safe=rows.filter(p=>p&&typeof p.id==="string"&&typeof p.name==="string"&&Number.isInteger(p.cents))
+    .map(p=>({
+      id:p.id,name:p.name,cents:p.cents,category:p.category,desc:p.desc||"",
+      available:p.available!==false,
+      photoUrl:typeof p.photoUrl==="string" && p.photoUrl.startsWith("https://wmtgqompgrthddznazdz.supabase.co/storage/v1/object/public/bn-menu/")?p.photoUrl:null
+    }));
+  menu.splice(0,menu.length,...safe);
+  renderMenu();
+});
+window.bnEditorRefresh=async()=>{
+  await loadSiteAppearance();
+  if(!document.body.classList.contains("bn-edit-mode"))await loadMenuPhotos();
+};

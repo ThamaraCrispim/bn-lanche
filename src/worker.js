@@ -433,7 +433,7 @@ async function saveProduct(request,env,productId){
     .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,51)||"item";
   const newId=slug+"-"+randomHex(3);
   const result=await dbRequest(env,"bn_products","POST","",{
-    ...payload,id:newId,description:payload.description||"",available:true,sort_order:sortOrder
+    ...payload,id:newId,description:payload.description||"",available:payload.available!==false,sort_order:sortOrder
   },{"Prefer":"return=representation"});
   if(!result?.[0])return error("Não foi possível cadastrar o produto.",503);
   return reply({product:productView(result[0])},201);
