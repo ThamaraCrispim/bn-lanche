@@ -99,7 +99,7 @@ async function loadProducts(){
     alertUser("");
   }catch(e){alertUser("Não foi possível carregar o cardápio: "+e.message);}
 }
-const paneKeys=["orders","products","customers","finance","site"];
+const paneKeys=["orders","customers","finance","site"];
 let customersLoaded=false,customers=[],financeLoaded=false,siteLoaded=false,siteData=null;
 function setTab(tab){
   for(const name of paneKeys){
@@ -108,7 +108,7 @@ function setTab(tab){
     $("tab-"+name).classList.toggle("active",selected);
     $("tab-"+name).setAttribute("aria-pressed",String(selected));
   }
-  if(tab==="products"&&!productsLoaded)loadProducts();
+  if(tab==="site"&&!productsLoaded)loadProducts();
   if(tab==="customers"&&!customersLoaded)loadCustomers();
   if(tab==="finance"&&!financeLoaded)loadFinance();
   if(tab==="site"&&!siteLoaded)loadSite();
