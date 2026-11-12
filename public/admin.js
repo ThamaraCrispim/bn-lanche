@@ -14,13 +14,26 @@ const escape=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">"
 let tick=null,loading=false;
 function alertUser(message){$("admin-alert").textContent=message;$("admin-alert").hidden=!message;$("admin-alert").classList.remove("ok");}
 function setAuth(isOn){$("admin-login").hidden=isOn;$("admin-dashboard").hidden=!isOn;if(!isOn&&tick){clearInterval(tick);tick=null;}}
+
+function whatsappMessage(o){
+  if(o.status==="aceito")return "Olá, "+o.name+"! 🍔\n\nSeu pedido *#"+o.number+"* foi *aceito* pelo *BN Lanches* e já está sendo preparado.\n\nAvisaremos quando estiver pronto para retirada. Obrigado! 😊";
+  if(o.status==="pronto")return "Olá, "+o.name+"! 🍔\n\nSeu pedido *#"+o.number+"* do *BN Lanches* está *PRONTO PARA RETIRADA*! ✅\n\nPode vir buscar no balcão.\n*Total:* "+money(o.totalCents)+"\n\nObrigado e bom apetite! 😋";
+  return "";
+}
+function whatsappAction(o){
+  const phone=String(o.phone||"");
+  if(!/^[0-9]{10,11}$/.test(phone)||!["aceito","pronto"].includes(o.status))return "";
+  const url="https://wa.me/55"+phone+"?text="+encodeURIComponent(whatsappMessage(o));
+  const label=o.status==="aceito"?"Avisar: pedido aceito":"Avisar: pode retirar";
+  return '<div class="admin-message-actions"><a class="admin-whatsapp" href="'+escape(url)+'" target="_blank" rel="noopener noreferrer" aria-label="'+escape(label)+' no WhatsApp">💬 '+label+'</a><small>Abre o WhatsApp com mensagem pronta. Confira e toque em enviar.</small></div>';
+}
 function orderCard(o){
   const lines=(o.items||[]).map(i=>'<div class="admin-line"><b>'+escape(i.quantity)+'× '+escape(i.name)+'</b><small>'+escape((i.extras||[]).map(e=>e.name).join(" • "))+'</small>'+(i.note?'<em>⚠ '+escape(i.note)+'</em>':"")+'</div>').join("");
   const states={novo:"Novo",aceito:"Aceito",pronto:"Pronto"};
   let actions=o.status==="novo"?'<button data-action="aceitar" data-id="'+o.number+'">✓ Aceitar pedido</button>':o.status==="aceito"?'<button data-action="pronto" data-id="'+o.number+'">✓ Marcar pronto</button>':'';
   if(["aceito","pronto"].includes(o.status)&&!o.paid)actions+='<button class="green" data-action="pagar" data-id="'+o.number+'">✓ Confirmar pagamento</button>';
   if(o.status==="pronto"&&o.paid)actions+='<button class="green" data-action="retirar" data-id="'+o.number+'">✓ Confirmar retirada</button>';
-  return '<article class="admin-order '+(o.status==="novo"?"is-new":o.status==="pronto"?"is-ready":"")+'"><div class="admin-order-top"><div><strong>#'+escape(o.number)+'</strong><small>'+new Date(o.createdAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+'</small></div><span class="admin-badge '+escape(o.status)+'">'+(states[o.status]||escape(o.status))+'</span></div><div class="admin-customer">'+escape(o.name)+' • Retirada</div><div class="admin-lines">'+lines+'</div><div class="admin-payment"><div>'+money(o.totalCents)+'<small>'+escape(o.paymentMethod||"")+'</small></div><div>'+(o.paid?"✓ Pago":"Pagamento pendente")+'</div></div><div class="admin-actions">'+actions+'</div></article>';
+  return '<article class="admin-order '+(o.status==="novo"?"is-new":o.status==="pronto"?"is-ready":"")+'"><div class="admin-order-top"><div><strong>#'+escape(o.number)+'</strong><small>'+new Date(o.createdAt).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})+'</small></div><span class="admin-badge '+escape(o.status)+'">'+(states[o.status]||escape(o.status))+'</span></div><div class="admin-customer">'+escape(o.name)+' • Retirada</div><div class="admin-lines">'+lines+'</div><div class="admin-payment"><div>'+money(o.totalCents)+'<small>'+escape(o.paymentMethod||"")+'</small></div><div>'+(o.paid?"✓ Pago":"Pagamento pendente")+'</div></div><div class="admin-actions">'+actions+'</div>'+whatsappAction(o)+'</article>';
 }
 async function refresh(){
   if(loading)return;loading=true;
