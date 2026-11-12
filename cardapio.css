@@ -9,3 +9,4 @@
 .ticket-code{color:#884719!important;font-weight:800!important;background:#fff0d6;border-radius:10px;padding:10px 12px}
 #tracking-share{margin:7px 0}
 @media(max-width:570px){.nav-inner{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}.nav-inner a,.nav-inner button{text-align:center;font-size:11px;padding:11px 5px}.nav-inner #install-app{margin-left:0}.site-nav{position:relative}}
+.product-photo img{width:100%;height:100%;object-fit:cover;display:block}.product-photo span{line-height:1}

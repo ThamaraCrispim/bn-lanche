@@ -1,4 +1,4 @@
-const CACHE = "bn-lanches-static-v2";
+const CACHE = "bn-lanches-static-v4";
 const ASSETS = ["/","/cardapio.css","/cardapio.js","/catalog.mjs","/install.js","/manifest.webmanifest","/icons/bn.svg","/icons/bn-192.png","/icons/bn-512.png"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));

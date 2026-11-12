@@ -40,7 +40,7 @@ function renderMenu(){
  const q=byId("search").value.trim().toLocaleLowerCase("pt-BR");
  const found=menu.filter(p=>(activeCategory==="Todos"||p.category===activeCategory) && (!q||(p.name+" "+p.desc).toLocaleLowerCase("pt-BR").includes(q)));
  byId("empty").hidden=found.length>0;
- byId("products").innerHTML=found.map(p=>'<article class="product"><div class="product-photo" aria-hidden="true">'+emoji(p)+'</div><div class="product-content"><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.desc||p.category)+'</p><div class="product-bottom"><strong class="price">'+escapeHtml(centsMoney(p.cents))+'</strong><button type="button" data-product="'+escapeHtml(p.id)+'">Adicionar +</button></div></div></article>').join("");
+ byId("products").innerHTML=found.map(p=>'<article class="product"><div class="product-photo">'+(p.photoUrl?'<img loading="lazy" src="'+escapeHtml(p.photoUrl)+'" alt="Foto de '+escapeHtml(p.name)+'">':'<span aria-hidden="true">'+emoji(p)+'</span>')+'</div><div class="product-content"><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.desc||p.category)+'</p><div class="product-bottom"><strong class="price">'+escapeHtml(centsMoney(p.cents))+'</strong><button type="button" data-product="'+escapeHtml(p.id)+'">Adicionar +</button></div></div></article>').join("");
 }
 function extrasSelected(){
  return [...byId("extras").querySelectorAll("input[data-extra]:checked")].map(el=>extras[Number(el.dataset.extra)]).filter(Boolean);
@@ -240,3 +240,30 @@ window.setInterval(()=>{
   if(byId("tracking-dialog").open && currentTicketToken && !document.hidden)trackToken(currentTicketToken,false);
 },15000);
 categoriesHtml();renderMenu();updateCartButton();
+
+
+async function loadMenuPhotos(){
+  try {
+    const response=await fetch("/api/menu",{cache:"no-store"});
+    if(!response.ok)return;
+    const data=await response.json();
+    if(!Array.isArray(data.products) || data.products.length===0)return;
+    const valid=data.products.filter(p=>p&&typeof p.id==="string"&&typeof p.name==="string"&&Number.isInteger(p.cents)&&p.cents>0);
+    if(valid.length===0)return;
+    const safe=valid.map(p=>({
+      id:p.id,name:p.name,cents:p.cents,category:p.category,desc:p.desc||"",available:p.available,
+      photoUrl:typeof p.photoUrl==="string" && p.photoUrl.startsWith("https://wmtgqompgrthddznazdz.supabase.co/storage/v1/object/public/bn-menu/")?p.photoUrl:null
+    }));
+    menu.splice(0,menu.length,...safe);
+    for(let i=cart.length-1;i>=0;i--){
+      const p=menu.find(x=>x.id===cart[i].id);
+      if(!p){cart.splice(i,1);continue;}
+      cart[i].name=p.name;
+      cart[i].unitPrice=p.cents;
+      cart[i].lineTotal=(p.cents+cart[i].additions.reduce((s,e)=>s+e.cents,0))*cart[i].quantity;
+    }
+    saveCart();
+    renderMenu();updateCartButton();
+  }catch{}
+}
+loadMenuPhotos();
