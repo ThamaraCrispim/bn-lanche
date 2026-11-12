@@ -227,12 +227,14 @@
       '<label class="bn-editor-availability"><input id="bn-p-available" type="checkbox" checked> Disponível no cardápio</label>'+
       '<div class="bn-editor-preview" id="bn-p-preview"><span>📷</span></div>'+
       '<label class="bn-editor-field">Foto do produto (JPG, PNG ou WebP, até 2 MB)<input id="bn-p-file" type="file" accept="image/jpeg,image/png,image/webp"></label>'+
-      '<button id="bn-p-remove" class="bn-editor-btn" type="button" hidden>Remover foto atual</button>'+
+      '<button id="bn-p-remove" class="bn-editor-btn" type="button" hidden>Remover foto atual</button>
+      '<button id="bn-p-archive" class="bn-editor-archive" type="button" hidden>Retirar do cardápio</button>'+
       '<footer><button type="button" class="secondary" id="bn-p-cancel">Cancelar</button><button type="submit" id="bn-p-save">Salvar produto</button></footer>'+
       '</form>';
     document.body.append(dialog);
     $("bn-product-close").addEventListener("click",()=>dialog.close());
     $("bn-p-cancel").addEventListener("click",()=>dialog.close());
+    $("bn-p-archive").addEventListener("click",archiveCurrentProduct);
     $("bn-p-remove").addEventListener("click",()=>{
       removeProductPhoto=true;
       $("bn-p-file").value="";
@@ -264,6 +266,9 @@
     $("bn-p-price").value=activeProduct?(activeProduct.cents/100).toFixed(2):"";
     $("bn-p-desc").value=activeProduct?.desc||"";
     $("bn-p-available").checked=activeProduct?.available!==false;
+    $("bn-p-archive").hidden=!activeProduct;
+    $("bn-p-archive").textContent=activeProduct?.archivedAt?"↩ Restaurar no cardápio":"🗑 Retirar do cardápio";
+    $("bn-p-archive").classList.toggle("is-restore",Boolean(activeProduct?.archivedAt));
     $("bn-p-file").value="";
     if(isGoodImageUrl(activeProduct?.photoUrl)){
       const img=document.createElement("img");
@@ -275,6 +280,27 @@
       $("bn-p-remove").hidden=true;
     }
     $("bn-product-modal").showModal();
+  }
+  async function archiveCurrentProduct(){
+    const p=activeProduct;
+    if(!p||saving)return;
+    const archive=!p.archivedAt;
+    const question=archive?
+      'Retirar "'+p.name+'" do cardápio? Os clientes não poderão pedir esse produto, mas você poderá restaurá-lo. O histórico de pedidos será mantido.':
+      'Restaurar "'+p.name+'" ao cardápio?';
+    if(!confirm(question))return;
+    saving=true;
+    $("bn-p-archive").disabled=true;
+    try{
+      await request("/api/admin/products/"+encodeURIComponent(p.id)+"/archive",{
+        method:"PATCH",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({archive})
+      });
+      $("bn-product-modal").close();
+      await loadProducts();
+      toast(archive?"Produto retirado. Para restaurar, toque na canetinha novamente.":"Produto restaurado no cardápio!");
+    }catch(e){toast("Não foi possível atualizar: "+e.message,true);}
+    finally{saving=false;$("bn-p-archive").disabled=false;}
   }
   async function loadProducts(){
     const data=await request("/api/admin/products");
@@ -336,10 +362,10 @@
       });
       card.append(button);
       const p=products.find(p=>p.id===id);
-      if(p?.available===false){
+      if(p?.archivedAt||p?.available===false){
         const state=document.createElement("span");
         state.className="bn-product-unavailable";
-        state.textContent="Indisponível";
+        state.textContent=p?.archivedAt?"Retirado do cardápio":"Indisponível";
         card.querySelector(".product-content")?.append(state);
       }
     }
@@ -352,8 +378,9 @@
     const add=document.createElement("button");
     add.type="button";add.id="bn-add-new-product";add.className="bn-editor-add-product";
     add.textContent="+ Adicionar novo produto";
-    const disclaimer=section.querySelector(".disclaimer");
-    section.insertBefore(add,disclaimer||null);
+    const title=section.querySelector(".title");
+    if(title)title.insertAdjacentElement("afterend",add);
+    else section.prepend(add);
     add.addEventListener("click",()=>openProduct());
   }
   async function init(){
