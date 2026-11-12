@@ -242,4 +242,93 @@ async function loadFinance(){
 }
 $("finance-period").addEventListener("change",loadFinance);
 
+
+function safeSiteImage(url){
+  if(url==="/icons/bn-original.svg")return true;
+  return typeof url==="string"&&validProductPhoto(url);
+}
+function fillSite(site){
+  $("site-name").value=site.storeName||"BN Lanches";
+  $("site-tagline").value=site.tagline||"";
+  $("site-title").value=site.heroTitle||"";
+  $("site-emphasis").value=site.heroEmphasis||"";
+  $("site-description").value=site.heroDescription||"";
+  renderSiteImages(site);
+}
+function renderSiteImages(site){
+  $("site-logo-thumb").innerHTML='<img alt="Logomarca atual" src="'+escape(safeSiteImage(site.logoUrl)?site.logoUrl:"/icons/bn-original.svg")+'">';
+  $("site-cover-thumb").innerHTML=safeSiteImage(site.coverUrl)?
+    '<img alt="Capa atual" src="'+escape(site.coverUrl)+'">':'<span>Sem capa personalizada</span>';
+}
+function refreshSitePreview(){
+  $("site-preview").src="/?preview=1&updated="+Date.now();
+}
+async function loadSite(){
+  try{
+    const data=await req("/api/admin/site");
+    siteData=data.site;siteLoaded=true;fillSite(siteData);alertUser("");
+  }catch(e){alertUser("Personalização: "+e.message);}
+}
+$("site-settings-form").addEventListener("submit",async event=>{
+  event.preventDefault();
+  const button=$("save-site-text");button.disabled=true;alertUser("");
+  try{
+    const data=await req("/api/admin/site","PATCH",{
+      storeName:$("site-name").value,
+      tagline:$("site-tagline").value,
+      heroTitle:$("site-title").value,
+      heroEmphasis:$("site-emphasis").value,
+      heroDescription:$("site-description").value
+    });
+    siteData=data.site;fillSite(siteData);refreshSitePreview();
+    alertUser("Textos salvos. Veja a página atualizada na prévia.");
+    $("admin-alert").classList.add("ok");
+  }catch(e){alertUser(e.message);}
+  finally{button.disabled=false;}
+});
+async function sendSiteImage(kind){
+  const input=$(kind==="logo"?"site-logo-file":"site-cover-file");
+  const file=input.files?.[0];
+  if(!file)return alertUser("Escolha uma imagem antes de salvar.");
+  const limit=kind==="logo"?2*1024*1024:5*1024*1024;
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)||file.size>limit)
+    return alertUser("Envie JPG, PNG ou WebP dentro do tamanho permitido.");
+  const button=$("save-site-"+kind);button.disabled=true;alertUser("");
+  try{
+    const resp=await fetch("/api/admin/site/"+kind,{
+      method:"POST",credentials:"same-origin",cache:"no-store",
+      headers:{"Content-Type":file.type},body:file
+    });
+    const result=await resp.json().catch(()=>({}));
+    if(!resp.ok)throw Error(result.error||"Não foi possível enviar a imagem.");
+    siteData=result.site;renderSiteImages(siteData);
+    input.value="";refreshSitePreview();
+    alertUser(kind==="logo"?"Logomarca salva!":"Capa salva!");
+    $("admin-alert").classList.add("ok");
+  }catch(e){alertUser(e.message);}
+  finally{button.disabled=false;}
+}
+async function resetSiteImage(kind){
+  if(!confirm(kind==="logo"?"Restaurar a logomarca original?":"Remover a foto de capa?"))return;
+  try{
+    const resp=await fetch("/api/admin/site/"+kind,{method:"DELETE",credentials:"same-origin",cache:"no-store"});
+    const result=await resp.json().catch(()=>({}));
+    if(!resp.ok)throw Error(result.error||"Não foi possível restaurar.");
+    siteData=result.site;renderSiteImages(siteData);refreshSitePreview();
+    alertUser("Imagem atualizada.");$("admin-alert").classList.add("ok");
+  }catch(e){alertUser(e.message);}
+}
+for(const kind of ["logo","cover"]){
+  $("save-site-"+kind).addEventListener("click",()=>sendSiteImage(kind));
+  $("reset-site-"+kind).addEventListener("click",()=>resetSiteImage(kind));
+}
+$("preview-mobile").addEventListener("click",()=>{
+  $("site-preview-frame").classList.add("is-mobile");
+  $("preview-mobile").classList.add("active");$("preview-desktop").classList.remove("active");
+});
+$("preview-desktop").addEventListener("click",()=>{
+  $("site-preview-frame").classList.remove("is-mobile");
+  $("preview-desktop").classList.add("active");$("preview-mobile").classList.remove("active");
+});
+
 start();
