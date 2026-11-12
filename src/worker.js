@@ -251,6 +251,60 @@ async function updateOrder(request,env,id) {
   const rows=await dbRequest(env,"bn_orders","PATCH",filters,patch,{"Prefer":"return=representation"});
   return rows?.[0]?reply({order:orderDto(rows[0])}):error("Não foi possível atualizar. Confirme a etapa e o pagamento.",409);
 }
+
+const IMAGE_BUCKET="bn-menu";
+const IMAGE_MAX_BYTES=2*1024*1024;
+function imageType(bytes) {
+  if(bytes.length>=3 && bytes[0]===0xff && bytes[1]===0xd8 && bytes[2]===0xff)return {mime:"image/jpeg",ext:"jpg"};
+  if(bytes.length>=8 && bytes[0]===137 && bytes[1]===80 && bytes[2]===78 && bytes[3]===71 && bytes[4]===13 && bytes[5]===10 && bytes[6]===26 && bytes[7]===10)return {mime:"image/png",ext:"png"};
+  if(bytes.length>=12 && String.fromCharCode(...bytes.subarray(0,4))==="RIFF" && String.fromCharCode(...bytes.subarray(8,12))==="WEBP")return {mime:"image/webp",ext:"webp"};
+  return null;
+}
+const productView=row=>({
+  id:row.id,name:row.name,cents:row.cents,category:row.category,desc:row.description||"",
+  photoUrl:row.photo_url||null,available:!!row.available,sortOrder:row.sort_order
+});
+async function menuList(env,onlyAvailable=false) {
+  if(!hasDb(env))return reply({products:menu.map((p,i)=>({...p,photoUrl:null,available:true,sortOrder:i}))});
+  const filters="select=id,name,cents,category,description,photo_url,available,sort_order"+
+    (onlyAvailable?"&available=eq.true":"")+"&order=sort_order.asc";
+  const products=await dbRequest(env,"bn_products","GET",filters);
+  return reply({products:products.map(productView)});
+}
+async function saveProductPhoto(request,env,productId) {
+  if(!hasDb(env))return error("Banco de dados não configurado.",503);
+  if(!/^[a-z0-9-]{2,70}$/.test(productId))return error("Produto inválido.");
+  const old=await firstRow(env,"bn_products",filterEq("id",productId));
+  if(!old)return error("Produto não encontrado.",404);
+  const headerLength=Number(request.headers.get("content-length")||0);
+  if(headerLength>IMAGE_MAX_BYTES)return error("A imagem deve ter até 2 MB.",413);
+  const bytes=new Uint8Array(await request.arrayBuffer());
+  if(!bytes.byteLength || bytes.byteLength>IMAGE_MAX_BYTES)return error("A imagem deve ter até 2 MB.",413);
+  const kind=imageType(bytes);
+  if(!kind)return error("Envie uma imagem JPG, PNG ou WebP válida.",415);
+  const root=new URL(env.SUPABASE_URL);
+  if(root.protocol!=="https:"||!root.hostname.endsWith(".supabase.co"))return error("Configuração do banco inválida.",503);
+  const objectName=productId+"-"+randomHex(12)+"."+kind.ext;
+  const endpoint=root.origin+"/storage/v1/object/"+IMAGE_BUCKET+"/"+objectName;
+  const response=await fetch(endpoint,{method:"POST",headers:{
+    "apikey":env.SUPABASE_SECRET_KEY,"Content-Type":kind.mime,
+    "cache-control":"3600","x-upsert":"false"
+  },body:bytes});
+  if(!response.ok){console.error("Falha ao enviar foto:",response.status);return error("Falha ao salvar foto no Supabase. Tente novamente.",503);}
+  const imageUrl=root.origin+"/storage/v1/object/public/"+IMAGE_BUCKET+"/"+objectName;
+  const updated=await dbRequest(env,"bn_products","PATCH",filterEq("id",productId),
+    {photo_url:imageUrl,updated_at:new Date().toISOString()},{"Prefer":"return=representation"});
+  if(!updated?.[0])return error("Não foi possível associar a foto ao produto.",503);
+  return reply({product:productView(updated[0]),photoUrl:imageUrl});
+}
+async function deleteProductPhoto(env,productId) {
+  if(!/^[a-z0-9-]{2,70}$/.test(productId))return error("Produto inválido.");
+  const updated=await dbRequest(env,"bn_products","PATCH",filterEq("id",productId),
+    {photo_url:null,updated_at:new Date().toISOString()},{"Prefer":"return=representation"});
+  if(!updated?.[0])return error("Produto não encontrado.",404);
+  return reply({product:productView(updated[0])});
+}
+
 export default {
   async fetch(request,env) {
     const url=new URL(request.url),path=url.pathname;
@@ -264,6 +318,7 @@ export default {
     }
     try{
       if(path==="/api/config" && request.method==="GET")return reply({ordersEnabled:liveOrders(env),adminEnabled:adminReady(env)});
+      if(path==="/api/menu" && request.method==="GET")return menuList(env,true);
       if(path==="/api/orders"&&request.method==="POST")return submitOrder(request,env);
       const trackMatch=path.match(/^\/api\/track\/([a-f0-9]+)$/);
       if(trackMatch&&request.method==="GET")return track(trackMatch[1],env);
@@ -276,6 +331,10 @@ export default {
       if(!path.startsWith("/api/admin/"))return error("Rota não encontrada.",404);
       if(!(await sessionUser(request,env)))return error("Entre como administrador.",401);
       if(path==="/api/admin/orders"&&request.method==="GET")return listOrders(env,url);
+      if(path==="/api/admin/products"&&request.method==="GET")return menuList(env,false);
+      const photoMatch=path.match(/^\/api\/admin\/products\/([a-z0-9-]{2,70})\/photo$/);
+      if(photoMatch&&request.method==="POST")return saveProductPhoto(request,env,photoMatch[1]);
+      if(photoMatch&&request.method==="DELETE")return deleteProductPhoto(env,photoMatch[1]);
       const m=path.match(/^\/api\/admin\/orders\/(\d+)$/);
       if(m&&request.method==="PATCH")return updateOrder(request,env,Number(m[1]));
       return error("Rota não encontrada.",404);
