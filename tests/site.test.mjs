@@ -170,3 +170,9 @@ test("editor visual abre a página verdadeira, com canetinhas apenas após sess�
   assert.ok(admin.includes('<details class="visual-advanced"'));
   assert.ok(admin.includes('id="products-pane"'));
 });
+
+test("capa personalizada oculta o hamburguinho ilustrativo para nao sobrepor a foto",()=>{
+  const css=readFileSync(new URL("../public/cardapio.css",import.meta.url),"utf8");
+  assert.match(css,/\.hero\.has-cover\s+\.burger\{display:none\}/);
+  assert.doesNotMatch(css,/\.hero\.has-cover\s+\.burger\{opacity:/);
+});
