@@ -227,7 +227,7 @@
       '<label class="bn-editor-availability"><input id="bn-p-available" type="checkbox" checked> Disponível no cardápio</label>'+
       '<div class="bn-editor-preview" id="bn-p-preview"><span>📷</span></div>'+
       '<label class="bn-editor-field">Foto do produto (JPG, PNG ou WebP, até 2 MB)<input id="bn-p-file" type="file" accept="image/jpeg,image/png,image/webp"></label>'+
-      '<button id="bn-p-remove" class="bn-editor-btn" type="button" hidden>Remover foto atual</button>
+      '<button id="bn-p-remove" class="bn-editor-btn" type="button" hidden>Remover foto atual</button>'+
       '<button id="bn-p-archive" class="bn-editor-archive" type="button" hidden>Retirar do cardápio</button>'+
       '<footer><button type="button" class="secondary" id="bn-p-cancel">Cancelar</button><button type="submit" id="bn-p-save">Salvar produto</button></footer>'+
       '</form>';
