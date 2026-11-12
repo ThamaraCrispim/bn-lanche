@@ -55,15 +55,17 @@ function randomCode() {
   const symbols="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   return Array.from(crypto.getRandomValues(new Uint8Array(10)),v=>symbols[v%symbols.length]).join("");
 }
-function parseCart(items) {
+async function parseCart(items,env) {
   if(!Array.isArray(items)||items.length<1||items.length>30) throw new Error("Escolha entre 1 e 30 itens.");
+  const inventory=await dbRequest(env,"bn_products","GET","select=id,name,cents,category,available&limit=1000");
+  const indexed=new Map((inventory||[]).map(p=>[p.id,p]));
   const clean=[];
   let total=0;
   for(const item of items) {
     if(!item||typeof item.id!=="string") throw new Error("Produto inválido.");
-    const p=menu.find(p=>p.id===item.id);
+    const p=indexed.get(item.id);
     const qty=Number(item.quantity);
-    if(!p||!Number.isInteger(qty)||qty<1||qty>30) throw new Error("Produto ou quantidade inválida.");
+    if(!p||!p.available||!Number.isInteger(qty)||qty<1||qty>30) throw new Error("Produto indisponível ou quantidade inválida.");
     const eligible=["Hambúrgueres","Hot-dogs","Frango"].includes(p.category);
     const additions=[];
     const indices=item.extraIds??[];
@@ -181,7 +183,7 @@ async function submitOrder(request,env) {
   if(!["pix","cartao","dinheiro"].includes(input.paymentMethod))return error("Escolha a forma de pagamento na retirada.");
   const key=input?.requestId;
   if(typeof key!=="string"|| !/^[a-f0-9-]{36}$/i.test(key))return error("Identificação da tentativa inválida.");
-  const {clean,total}=parseCart(input.items);
+  const {clean,total}=await parseCart(input.items,env);
   const old=await firstRow(env,"bn_orders",filterEq("request_key",key));
   if(old)return error("Este pedido já foi registrado. Consulte seu comprovante anterior.",409);
   const recent=await dbRequest(env,"bn_orders","GET","select=id&"+filterEq("phone",phone)+"&"+filterGt("created_at",Date.now()-10*60000)+"&limit=4");
@@ -305,6 +307,148 @@ async function deleteProductPhoto(env,productId) {
   return reply({product:productView(updated[0])});
 }
 
+
+const DEFAULT_SITE={
+  id:1,storeName:"BN Lanches",tagline:"O melhor lanche da cidade!",
+  heroTitle:"Seu lanche favorito,",heroEmphasis:"do seu jeito.",
+  heroDescription:"Escolha os lanches e personalize sem criar conta.",
+  coverUrl:null,logoUrl:"/icons/bn-original.svg"
+};
+function imageUrlIsSafe(value,env){
+  if(typeof value!=="string")return false;
+  try{
+    const origin=new URL(env.SUPABASE_URL).origin;
+    const target=new URL(value);
+    return target.origin===origin && target.pathname.startsWith("/storage/v1/object/public/bn-menu/");
+  }catch{return false;}
+}
+function siteDto(row,env){
+  return {
+    id:1,storeName:row.store_name,tagline:row.tagline,
+    heroTitle:row.hero_title,heroEmphasis:row.hero_emphasis,
+    heroDescription:row.hero_description,
+    coverUrl:imageUrlIsSafe(row.cover_url,env)?row.cover_url:null,
+    logoUrl:imageUrlIsSafe(row.logo_url,env)?row.logo_url:"/icons/bn-original.svg"
+  };
+}
+async function siteInfo(env){
+  if(!hasDb(env))return reply({site:DEFAULT_SITE});
+  const row=await firstRow(env,"bn_site_settings","id=eq.1");
+  return reply({site:row?siteDto(row,env):DEFAULT_SITE});
+}
+async function updateSiteText(request,env){
+  const input=await body(request);
+  if(!input||typeof input!=="object"||Array.isArray(input))return error("Dados inválidos.");
+  const fields={storeName:["store_name",2,70],tagline:["tagline",0,110],
+    heroTitle:["hero_title",2,90],heroEmphasis:["hero_emphasis",2,70],
+    heroDescription:["hero_description",0,240]};
+  const payload={};
+  for(const [key,value] of Object.entries(input)){
+    if(!(key in fields)||typeof value!=="string")return error("Campo de personalização inválido.");
+    const [column,min,max]=fields[key];
+    const cleaned=value.trim().replace(/\s+/g," ");
+    if(cleaned.length<min||cleaned.length>max)return error("Texto fora do tamanho permitido.");
+    payload[column]=cleaned;
+  }
+  if(!Object.keys(payload).length)return error("Nenhuma alteração recebida.");
+  payload.updated_at=new Date().toISOString();
+  const updated=await dbRequest(env,"bn_site_settings","PATCH","id=eq.1",payload,{"Prefer":"return=representation"});
+  if(!updated?.[0])return error("Não foi possível salvar a personalização.",503);
+  return reply({site:siteDto(updated[0],env)});
+}
+async function saveSiteAsset(request,env,kind){
+  if(!["logo","cover"].includes(kind))return error("Imagem inválida.",400);
+  const maxBytes=kind==="logo"?2*1024*1024:5*1024*1024;
+  if(Number(request.headers.get("content-length")||0)>maxBytes)return error("Imagem acima do limite de tamanho.",413);
+  const bytes=new Uint8Array(await request.arrayBuffer());
+  if(!bytes.length||bytes.byteLength>maxBytes)return error("Imagem acima do limite de tamanho.",413);
+  const kindOfImage=imageType(bytes);
+  if(!kindOfImage)return error("Imagem inválida. Use JPG, PNG ou WebP.",415);
+  const origin=new URL(env.SUPABASE_URL).origin;
+  const filename="site/"+kind+"-"+randomHex(12)+"."+kindOfImage.ext;
+  const response=await fetch(origin+"/storage/v1/object/bn-menu/"+filename,{
+    method:"POST",headers:{
+      "apikey":env.SUPABASE_SECRET_KEY,"Content-Type":kindOfImage.mime,
+      "cache-control":"3600","x-upsert":"false"
+    },body:bytes
+  });
+  if(!response.ok){console.error("Storage error",response.status);return error("Não foi possível salvar a imagem no Supabase.",503);}
+  const publicUrl=origin+"/storage/v1/object/public/bn-menu/"+filename;
+  const column=kind==="logo"?"logo_url":"cover_url";
+  const changed=await dbRequest(env,"bn_site_settings","PATCH","id=eq.1",
+    {[column]:publicUrl,updated_at:new Date().toISOString()},{"Prefer":"return=representation"});
+  if(!changed?.[0])return error("Não foi possível aplicar a imagem.",503);
+  return reply({site:siteDto(changed[0],env)});
+}
+async function removeSiteAsset(env,kind){
+  if(!["logo","cover"].includes(kind))return error("Imagem inválida.");
+  const column=kind==="logo"?"logo_url":"cover_url";
+  const changed=await dbRequest(env,"bn_site_settings","PATCH","id=eq.1",
+    {[column]:null,updated_at:new Date().toISOString()},{"Prefer":"return=representation"});
+  if(!changed?.[0])return error("Não foi possível remover a imagem.",503);
+  return reply({site:siteDto(changed[0],env)});
+}
+const ALLOWED_CATEGORIES=["Hambúrgueres","Hot-dogs","Frango","Porções","Bebidas","Sobremesas"];
+function productFields(input,creating=false){
+  if(!input||typeof input!=="object"||Array.isArray(input))throw Error("Dados inválidos.");
+  const fields={name:"name",cents:"cents",category:"category",desc:"description",available:"available"};
+  const payload={};
+  for(const [key,value] of Object.entries(input)){
+    if(!(key in fields))throw Error("Campo de produto inválido.");
+    if(key==="name"){
+      if(typeof value!=="string"||value.trim().length<2||value.trim().length>100)throw Error("Nome do produto inválido.");
+      payload.name=value.trim();
+    }else if(key==="cents"){
+      if(!Number.isSafeInteger(value)||value<1||value>200000)throw Error("Preço do produto inválido.");
+      payload.cents=value;
+    }else if(key==="category"){
+      if(!ALLOWED_CATEGORIES.includes(value))throw Error("Categoria inválida.");
+      payload.category=value;
+    }else if(key==="desc"){
+      if(typeof value!=="string"||value.length>800)throw Error("Descrição inválida.");
+      payload.description=value.trim();
+    }else if(key==="available"){
+      if(typeof value!=="boolean")throw Error("Disponibilidade inválida.");
+      payload.available=value;
+    }
+  }
+  if(creating&&(!payload.name||!payload.cents||!payload.category))throw Error("Preencha nome, preço e categoria.");
+  if(!Object.keys(payload).length)throw Error("Nenhuma alteração recebida.");
+  payload.updated_at=new Date().toISOString();
+  return payload;
+}
+async function saveProduct(request,env,productId){
+  const input=await body(request);
+  const payload=productFields(input,!productId);
+  if(productId){
+    if(!/^[a-z0-9-]{2,70}$/.test(productId))return error("Produto inválido.");
+    const changed=await dbRequest(env,"bn_products","PATCH",filterEq("id",productId),
+      payload,{"Prefer":"return=representation"});
+    if(!changed?.[0])return error("Produto não encontrado.",404);
+    return reply({product:productView(changed[0])});
+  }
+  const existing=await dbRequest(env,"bn_products","GET","select=sort_order&order=sort_order.desc&limit=1");
+  const sortOrder=Math.min(1000000,(Number(existing?.[0]?.sort_order)||0)+1);
+  const slug=payload.name.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase()
+    .replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,51)||"item";
+  const newId=slug+"-"+randomHex(3);
+  const result=await dbRequest(env,"bn_products","POST","",{
+    ...payload,id:newId,description:payload.description||"",available:true,sort_order:sortOrder
+  },{"Prefer":"return=representation"});
+  if(!result?.[0])return error("Não foi possível cadastrar o produto.",503);
+  return reply({product:productView(result[0])},201);
+}
+async function financeReport(env,url){
+  const period=url.searchParams.get("period")||"today";
+  if(!["today","week","month","all"].includes(period))return error("Período inválido.");
+  const data=await dbRequest(env,"rpc/bn_finance_summary","POST","",{p_period:period});
+  return reply({report:data});
+}
+async function customerReport(env){
+  const data=await dbRequest(env,"rpc/bn_customers_summary","POST","",{p_limit:250});
+  return reply({customers:Array.isArray(data)?data:[]});
+}
+
 export default {
   async fetch(request,env) {
     const url=new URL(request.url),path=url.pathname;
@@ -319,6 +463,7 @@ export default {
     try{
       if(path==="/api/config" && request.method==="GET")return reply({ordersEnabled:liveOrders(env),adminEnabled:adminReady(env)});
       if(path==="/api/menu" && request.method==="GET")return menuList(env,true);
+      if(path==="/api/site" && request.method==="GET")return siteInfo(env);
       if(path==="/api/orders"&&request.method==="POST")return submitOrder(request,env);
       const trackMatch=path.match(/^\/api\/track\/([a-f0-9]+)$/);
       if(trackMatch&&request.method==="GET")return track(trackMatch[1],env);
@@ -332,6 +477,16 @@ export default {
       if(!(await sessionUser(request,env)))return error("Entre como administrador.",401);
       if(path==="/api/admin/orders"&&request.method==="GET")return listOrders(env,url);
       if(path==="/api/admin/products"&&request.method==="GET")return menuList(env,false);
+      if(path==="/api/admin/products"&&request.method==="POST")return saveProduct(request,env);
+      const productEdit=path.match(/^\/api\/admin\/products\/([a-z0-9-]{2,70})$/);
+      if(productEdit&&request.method==="PATCH")return saveProduct(request,env,productEdit[1]);
+      if(path==="/api/admin/finance"&&request.method==="GET")return financeReport(env,url);
+      if(path==="/api/admin/customers"&&request.method==="GET")return customerReport(env);
+      if(path==="/api/admin/site"&&request.method==="GET")return siteInfo(env);
+      if(path==="/api/admin/site"&&request.method==="PATCH")return updateSiteText(request,env);
+      const siteMediaMatch=path.match(/^\/api\/admin\/site\/(logo|cover)$/);
+      if(siteMediaMatch&&request.method==="POST")return saveSiteAsset(request,env,siteMediaMatch[1]);
+      if(siteMediaMatch&&request.method==="DELETE")return removeSiteAsset(env,siteMediaMatch[1]);
       const photoMatch=path.match(/^\/api\/admin\/products\/([a-z0-9-]{2,70})\/photo$/);
       if(photoMatch&&request.method==="POST")return saveProductPhoto(request,env,photoMatch[1]);
       if(photoMatch&&request.method==="DELETE")return deleteProductPhoto(env,photoMatch[1]);
@@ -340,7 +495,7 @@ export default {
       return error("Rota não encontrada.",404);
     } catch(e) {
       if(e instanceof Error && !/D1_ERROR|SQLITE|database|no such table|binding/i.test(e.message)){
-        if(/inválid|informe|muito|escolha|fora da etapa|não pode|adicional/i.test(e.message.toLowerCase()))return error(e.message,400);
+        if(/inválid|indisponível|informe|preencha|muito|escolha|fora da etapa|não pode|adicional|tamanho|nenhuma|acima do limite/i.test(e.message.toLowerCase()))return error(e.message,400);
       }
       console.error("API error",e instanceof Error?e.message:e);
       return error("Não foi possível processar agora. Verifique a configuração ou tente novamente.",503);
