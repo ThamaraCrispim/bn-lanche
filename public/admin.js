@@ -25,11 +25,13 @@ function orderCard(o){
 async function refresh(){
   if(loading)return;loading=true;
   try{
-    const result=await req("/api/admin/orders?status=abertos");
+    const filter=$("orders-filter").value;
+    const result=await req("/api/admin/orders?status="+encodeURIComponent(filter));
     const orders=result.orders||[];
-    $("count-new").textContent=orders.filter(o=>o.status==="novo").length;
-    $("count-accepted").textContent=orders.filter(o=>o.status==="aceito").length;
-    $("count-ready").textContent=orders.filter(o=>o.status==="pronto").length;
+    const open=filter==="abertos"?orders:(await req("/api/admin/orders?status=abertos")).orders||[];
+    $("count-new").textContent=open.filter(o=>o.status==="novo").length;
+    $("count-accepted").textContent=open.filter(o=>o.status==="aceito").length;
+    $("count-ready").textContent=open.filter(o=>o.status==="pronto").length;
     $("admin-orders").innerHTML=orders.map(orderCard).join("");
     $("admin-empty").hidden=orders.length>0;
     alertUser("");
@@ -65,6 +67,7 @@ $("admin-orders").addEventListener("click",async evt=>{
   catch(e){alertUser(e.message);b.disabled=false;}
 });
 $("refresh-orders").addEventListener("click",refresh);
+$("orders-filter").addEventListener("change",refresh);
 $("logout").addEventListener("click",async()=>{try{await req("/api/admin/logout","POST",{});}catch{}setAuth(false);alertUser("");});
 
 let productsLoaded=false;
@@ -79,7 +82,7 @@ function productCard(p){
   const image=p.photoUrl&&validProductPhoto(p.photoUrl)
     ?'<img src="'+escape(p.photoUrl)+'" loading="lazy" alt="Foto de '+escape(p.name)+'">'
     :'<span aria-hidden="true">📷</span>';
-  return '<article class="admin-product" data-id="'+escape(p.id)+'"><div class="admin-product-image">'+image+'</div><div class="admin-product-body"><b>'+escape(p.name)+'</b><small>'+escape(p.category)+' • '+money(p.cents)+'</small><div class="admin-photo-actions"><label class="admin-photo-file">Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" data-photo-file="'+escape(p.id)+'" aria-label="Foto de '+escape(p.name)+'"></label><button type="button" data-upload="'+escape(p.id)+'">Enviar foto</button>'+(p.photoUrl?'<button type="button" class="outline" data-delete-photo="'+escape(p.id)+'">Remover foto</button>':"")+'</div><small class="admin-file-label" data-file-label="'+escape(p.id)+'"></small></div></article>';
+  return '<article class="admin-product" data-id="'+escape(p.id)+'"><div class="admin-product-image">'+image+'</div><div class="admin-product-body"><b>'+escape(p.name)+'</b><small>'+escape(p.category)+' • '+money(p.cents)+(p.available?'':' • Indisponível')+'</small><div class="admin-photo-actions"><button type="button" class="outline" data-edit-product="'+escape(p.id)+'">Editar produto</button><label class="admin-photo-file">Escolher foto<input type="file" accept="image/jpeg,image/png,image/webp" data-photo-file="'+escape(p.id)+'" aria-label="Foto de '+escape(p.name)+'"></label><button type="button" data-upload="'+escape(p.id)+'">Enviar foto</button>'+(p.photoUrl?'<button type="button" class="outline" data-delete-photo="'+escape(p.id)+'">Remover foto</button>':"")+'</div><small class="admin-file-label" data-file-label="'+escape(p.id)+'"></small></div></article>';
 }
 function renderProducts(){
   const q=$("product-search").value.toLocaleLowerCase("pt-BR").trim();
@@ -96,18 +99,21 @@ async function loadProducts(){
     alertUser("");
   }catch(e){alertUser("Não foi possível carregar o cardápio: "+e.message);}
 }
+const paneKeys=["orders","products","customers","finance","site"];
+let customersLoaded=false,customers=[],financeLoaded=false,siteLoaded=false,siteData=null;
 function setTab(tab){
-  const showProducts=tab==="products";
-  $("orders-pane").hidden=showProducts;
-  $("products-pane").hidden=!showProducts;
-  $("tab-orders").classList.toggle("active",!showProducts);
-  $("tab-products").classList.toggle("active",showProducts);
-  $("tab-orders").setAttribute("aria-pressed",String(!showProducts));
-  $("tab-products").setAttribute("aria-pressed",String(showProducts));
-  if(showProducts&&!productsLoaded)loadProducts();
+  for(const name of paneKeys){
+    const selected=tab===name;
+    $(name+"-pane").hidden=!selected;
+    $("tab-"+name).classList.toggle("active",selected);
+    $("tab-"+name).setAttribute("aria-pressed",String(selected));
+  }
+  if(tab==="products"&&!productsLoaded)loadProducts();
+  if(tab==="customers"&&!customersLoaded)loadCustomers();
+  if(tab==="finance"&&!financeLoaded)loadFinance();
+  if(tab==="site"&&!siteLoaded)loadSite();
 }
-$("tab-orders").addEventListener("click",()=>setTab("orders"));
-$("tab-products").addEventListener("click",()=>setTab("products"));
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 $("product-search").addEventListener("input",renderProducts);
 $("admin-products").addEventListener("change",e=>{
   const input=e.target.closest("input[data-photo-file]");
