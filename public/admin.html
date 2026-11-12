@@ -17,15 +17,13 @@
     <div class="admin-tools"><div><h2>Pedidos da cozinha</h2><p>Atualização automática enquanto esta tela estiver aberta.</p></div><div><button id="refresh-orders" class="action-outline" type="button">Atualizar</button><button id="logout" class="action-outline" type="button">Sair</button></div></div>
     <div class="admin-tabs" role="tablist" aria-label="Áreas do painel">
       <button id="tab-orders" type="button" aria-pressed="true" class="active" data-tab="orders">Pedidos</button>
-      <button id="tab-products" type="button" aria-pressed="false" data-tab="products">Cardápio e fotos</button>
       <button id="tab-customers" type="button" aria-pressed="false" data-tab="customers">Clientes</button>
       <button id="tab-finance" type="button" aria-pressed="false" data-tab="finance">Financeiro</button>
-      <button id="tab-site" type="button" aria-pressed="false" data-tab="site">Editar aplicativo</button>
+      <button id="tab-site" type="button" aria-pressed="false" data-tab="site">Editar app</button>
     </div>
     <section id="orders-pane"><div class="orders-toolbar"><label for="orders-filter">Visualizar pedidos:</label><select id="orders-filter"><option value="abertos">Em aberto</option><option value="novo">Novos</option><option value="aceito">Aceitos</option><option value="pronto">Prontos</option><option value="retirado">Retirados</option><option value="cancelado">Cancelados</option><option value="todos">Histórico completo (últimos 100)</option></select></div><div class="admin-stats"><div><span>Novos</span><strong id="count-new">0</strong></div><div><span>Aceitos</span><strong id="count-accepted">0</strong></div><div><span>Prontos</span><strong id="count-ready">0</strong></div></div>
     <div id="admin-orders" class="admin-orders" aria-live="polite"></div>
     <p id="admin-empty" class="admin-empty" hidden>Nenhum pedido em aberto.</p></section>
-    <section id="products-pane" hidden><div class="admin-menu-head"><div><h2>Gerenciar cardápio</h2><p>Adicione produtos, atualize preços e descrições, controle disponibilidade e envie fotos (JPG, PNG ou WebP, até 2 MB).</p></div><div class="admin-menu-controls"><input id="product-search" type="search" placeholder="Buscar lanche ou bebida..." aria-label="Buscar produto"><button id="new-product" class="admin-add-product" type="button">+ Novo produto</button></div></div><div id="admin-products" class="admin-products"></div><p id="products-empty" class="admin-empty" hidden>Nenhum produto encontrado.</p></section>
     <section id="customers-pane" hidden>
       <div class="admin-menu-head"><div><h2>Clientes</h2><p>Histórico por WhatsApp dos clientes que fizeram pedidos. Dados visíveis somente ao administrador.</p></div><input id="customers-search" type="search" placeholder="Buscar nome ou WhatsApp..." aria-label="Buscar cliente"></div>
       <div id="customers-overview" class="admin-stats"></div><div id="admin-customers" class="customer-list" aria-live="polite"></div>
@@ -63,6 +61,7 @@
         </div>
         <div class="site-live-preview"><div class="site-preview-toolbar"><strong>Prévia da página inteira</strong><div><button id="preview-mobile" type="button">Celular</button><button id="preview-desktop" type="button" class="active">Computador</button></div></div><div class="site-preview-frame" id="site-preview-frame"><iframe id="site-preview" title="Prévia completa do cardápio BN Lanches" loading="lazy" src="/?preview=1"></iframe></div><p>A prévia pode ser rolada até o fim. As alterações são mostradas após salvar.</p></div>
       </div>
+      <section id="products-pane" class="site-product-area"><div class="admin-menu-head"><div><h3>Produtos do cardápio e fotos</h3><p>Adicione produtos, atualize preços e descrições, controle disponibilidade e envie fotos (JPG, PNG ou WebP, até 2 MB).</p></div><div class="admin-menu-controls"><input id="product-search" type="search" placeholder="Buscar lanche ou bebida..." aria-label="Buscar produto"><button id="new-product" class="admin-add-product" type="button">+ Novo produto</button></div></div><div id="admin-products" class="admin-products"></div><p id="products-empty" class="admin-empty" hidden>Nenhum produto encontrado.</p></section>
     </section>
   </section>
   <dialog id="product-editor" class="product-editor-modal">
