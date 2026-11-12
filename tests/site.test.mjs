@@ -54,3 +54,33 @@ test("configuração Cloudflare encaminha API ao Worker",()=>{
  const manifest=JSON.parse(readFileSync(new URL("../public/manifest.webmanifest",import.meta.url),"utf8"));
  assert.equal(manifest.display,"standalone");
 });
+
+test("API fica bloqueada quando não há segredos configurados",async()=>{
+  const {default: worker}=await import("../src/worker.js");
+  const origin="https://bn-lanche.example";
+  const config=await worker.fetch(new Request(origin+"/api/config"),{});
+  assert.equal(config.status,200);
+  assert.deepEqual(await config.json(),{ordersEnabled:false,adminEnabled:false});
+  const order=await worker.fetch(new Request(origin+"/api/orders",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({name:"Teste",phone:"16999999999",items:[]})
+  }),{});
+  assert.equal(order.status,503);
+  const login=await worker.fetch(new Request(origin+"/api/admin/login",{
+    method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({username:"teste",password:"teste"})
+  }),{});
+  assert.equal(login.status,503);
+  const admin=await worker.fetch(new Request(origin+"/api/admin/orders"),{});
+  assert.equal(admin.status,401);
+});
+test("Worker usa Supabase no servidor sem expor chave secreta no frontend",()=>{
+ const worker=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
+ const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
+ const client=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
+ assert.match(worker,/SUPABASE_SECRET_KEY/);
+ assert.match(worker,/\/rest\/v1\//);
+ assert.doesNotMatch(client,/SUPABASE_SECRET_KEY|sb_secret_/);
+ assert.doesNotMatch(html,/SUPABASE_SECRET_KEY|sb_secret_/);
+ assert.doesNotMatch(worker,/env\.DB/);
+});
