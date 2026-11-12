@@ -49,7 +49,7 @@
           <span class="visual-launch-eyebrow">EDITOR VISUAL</span>
           <h2>Edite o site do jeito que o cliente vê</h2>
           <p>Abra a página completa e toque nas canetinhas para alterar logomarca, capa, textos, produtos e fotos. Nenhuma alteração será mostrada aos clientes antes de salvar.</p>
-          <a href="/?editar=1" id="open-visual-editor" class="visual-launch-button"><span aria-hidden="true">✎</span> Abrir editor visual</a>
+          <div class="visual-launch-actions"><a href="/?editar=1" id="open-visual-editor" class="visual-launch-button"><span aria-hidden="true">✎</span> Abrir editor visual</a><button type="button" id="quick-new-product" class="visual-launch-secondary">+ Novo produto</button></div>
         </div>
         <div class="visual-launch-example" aria-hidden="true">
           <div class="visual-mini-top"><img src="/icons/bn-original.svg" alt=""><span>BN LANCHES</span><b>✎</b></div>
@@ -75,7 +75,7 @@
         </div>
         <div class="site-live-preview"><div class="site-preview-toolbar"><strong>Prévia da página inteira</strong><div><button id="preview-mobile" type="button" class="active">Celular</button><button id="preview-desktop" type="button">Computador</button></div></div><div class="site-preview-frame is-mobile" id="site-preview-frame"><iframe id="site-preview" title="Prévia completa do cardápio BN Lanches" loading="lazy" src="/?preview=1"></iframe></div><p>A prévia pode ser rolada até o fim. As alterações são mostradas após salvar.</p></div>
       </div>
-      <section id="products-pane" class="site-product-area"><div class="admin-menu-head"><div><h3>Produtos do cardápio e fotos</h3><p>Adicione produtos, atualize preços e descrições, controle disponibilidade e envie fotos (JPG, PNG ou WebP, até 2 MB).</p></div><div class="admin-menu-controls"><input id="product-search" type="search" placeholder="Buscar lanche ou bebida..." aria-label="Buscar produto"><button id="new-product" class="admin-add-product" type="button">+ Novo produto</button></div></div><div id="admin-products" class="admin-products"></div><p id="products-empty" class="admin-empty" hidden>Nenhum produto encontrado.</p></section>
+      <section id="products-pane" class="site-product-area"><div class="admin-menu-head"><div><h3>Produtos do cardápio e fotos</h3><p>Adicione produtos, atualize preços e descrições, controle disponibilidade e envie fotos (JPG, PNG ou WebP, até 2 MB).</p></div><div class="admin-menu-controls"><input id="product-search" type="search" placeholder="Buscar lanche ou bebida..." aria-label="Buscar produto"><label class="admin-archive-filter"><input type="checkbox" id="show-archived-products"> Ver produtos retirados</label><button id="new-product" class="admin-add-product" type="button">+ Novo produto</button></div></div><div id="admin-products" class="admin-products"></div><p id="products-empty" class="admin-empty" hidden>Nenhum produto encontrado.</p></section>
       </details>
     </section>
   </section>
@@ -87,7 +87,7 @@
       <label class="field"><b>Categoria</b><select id="edit-product-category" required><option>Hambúrgueres</option><option>Hot-dogs</option><option>Frango</option><option>Porções</option><option>Bebidas</option><option>Sobremesas</option></select></label>
       <label class="field"><b>Preço (R$)</b><input id="edit-product-price" type="number" min="0.01" max="2000" step="0.01" required></label>
       <label class="field"><b>Descrição / ingredientes</b><textarea id="edit-product-description" maxlength="800" rows="3"></textarea></label>
-      <label class="remember"><input type="checkbox" id="edit-product-available" checked><span>Disponível para clientes</span></label>
+      <label class="remember"><input type="checkbox" id="edit-product-available" checked><span>Disponível para clientes</span></label><label class="field"><b>Foto (opcional, até 2 MB)</b><input id="edit-product-photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
       <button type="submit" class="primary" id="save-product">Salvar produto</button>
     </form>
   </dialog>
