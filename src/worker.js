@@ -253,7 +253,7 @@ async function updateOrder(request,env,id) {
   const filters=filterEq("id",id)+"&"+filterEq("status",x.from)+(action==="retirar"?"&paid=eq.true":"");
   const patch={status:x.to,[x.col]:now,updated_at:now};
   const rows=await dbRequest(env,"bn_orders","PATCH",filters,patch,{"Prefer":"return=representation"});
-  return rows?.[0]?reply({order:orderDto(rows[0])}):error("Não foi possível atualizar. Confirme a etapa e o pagamento.",409);
+  return rows?.[0]?reply({order:adminOrderDto(rows[0])}):error("Não foi possível atualizar. Confirme a etapa e o pagamento.",409);
 }
 
 const IMAGE_BUCKET="bn-menu";
