@@ -57,7 +57,7 @@ function randomCode() {
 }
 async function parseCart(items,env) {
   if(!Array.isArray(items)||items.length<1||items.length>30) throw new Error("Escolha entre 1 e 30 itens.");
-  const inventory=await dbRequest(env,"bn_products","GET","select=id,name,cents,category,available&limit=1000");
+  const inventory=await dbRequest(env,"bn_products","GET","select=id,name,cents,category,available,archived_at&limit=1000");
   const indexed=new Map((inventory||[]).map(p=>[p.id,p]));
   const clean=[];
   let total=0;
@@ -65,7 +65,7 @@ async function parseCart(items,env) {
     if(!item||typeof item.id!=="string") throw new Error("Produto inválido.");
     const p=indexed.get(item.id);
     const qty=Number(item.quantity);
-    if(!p||!p.available||!Number.isInteger(qty)||qty<1||qty>30) throw new Error("Produto indisponível ou quantidade inválida.");
+    if(!p||!p.available||p.archived_at||!Number.isInteger(qty)||qty<1||qty>30) throw new Error("Produto indisponível ou quantidade inválida.");
     const eligible=["Hambúrgueres","Hot-dogs","Frango"].includes(p.category);
     const additions=[];
     const indices=item.extraIds??[];
@@ -91,6 +91,8 @@ function orderDto(row) {
     acceptedAt:row.accepted_at,readyAt:row.ready_at,deliveredAt:row.delivered_at
   };
 }
+// Dados pessoais so devem ser retornados ao administrador autenticado.
+function adminOrderDto(row){return {...orderDto(row),phone:row.phone};}
 function hasDb(env) {
   return Boolean(env.SUPABASE_URL && env.SUPABASE_SECRET_KEY);
 }
@@ -228,7 +230,7 @@ async function listOrders(env,url) {
   options+="&order=created_at.desc&limit=100";
   const result=await dbRequest(env,"bn_orders","GET",options);
   const weight={novo:0,aceito:1,pronto:2,retirado:3,cancelado:4};
-  return reply({orders:(result||[]).map(orderDto).sort((a,b)=>(weight[a.status]??5)-(weight[b.status]??5)||b.createdAt-a.createdAt)});
+  return reply({orders:(result||[]).map(adminOrderDto).sort((a,b)=>(weight[a.status]??5)-(weight[b.status]??5)||b.createdAt-a.createdAt)});
 }
 async function updateOrder(request,env,id) {
   const input=await body(request);
@@ -244,7 +246,7 @@ async function updateOrder(request,env,id) {
   if(action==="pagar"){
     const filters=filterEq("id",id)+"&status=in.(aceito,pronto)&paid=eq.false";
     const rows=await dbRequest(env,"bn_orders","PATCH",filters,{paid:true,paid_at:now,updated_at:now},{"Prefer":"return=representation"});
-    return rows?.[0]?reply({order:orderDto(rows[0])}):error("Pagamento já registrado ou pedido fora da etapa correta.",409);
+    return rows?.[0]?reply({order:adminOrderDto(rows[0])}):error("Pagamento já registrado ou pedido fora da etapa correta.",409);
   }
   const x=transitions[action];
   if(!x)return error("Ação inválida.");
@@ -264,12 +266,12 @@ function imageType(bytes) {
 }
 const productView=row=>({
   id:row.id,name:row.name,cents:row.cents,category:row.category,desc:row.description||"",
-  photoUrl:row.photo_url||null,available:!!row.available,sortOrder:row.sort_order
+  photoUrl:row.photo_url||null,available:!!row.available,archivedAt:row.archived_at||null,sortOrder:row.sort_order
 });
 async function menuList(env,onlyAvailable=false) {
   if(!hasDb(env))return reply({products:menu.map((p,i)=>({...p,photoUrl:null,available:true,sortOrder:i}))});
-  const filters="select=id,name,cents,category,description,photo_url,available,sort_order"+
-    (onlyAvailable?"&available=eq.true":"")+"&order=sort_order.asc";
+  const filters="select=id,name,cents,category,description,photo_url,available,archived_at,sort_order"+
+    (onlyAvailable?"&available=eq.true&archived_at=is.null":"")+"&order=sort_order.asc";
   const products=await dbRequest(env,"bn_products","GET",filters);
   return reply({products:products.map(productView)});
 }
@@ -438,6 +440,17 @@ async function saveProduct(request,env,productId){
   if(!result?.[0])return error("Não foi possível cadastrar o produto.",503);
   return reply({product:productView(result[0])},201);
 }
+async function archiveProduct(request,env,productId){
+  if(!/^[a-z0-9-]{2,70}$/.test(productId))return error("Produto inválido.");
+  const input=await body(request);
+  if(typeof input?.archive!=="boolean")return error("Escolha se deseja remover ou restaurar o produto.");
+  // Exclusão lógica, sem destruir fotos nem o histórico de pedidos.
+  const rows=await dbRequest(env,"bn_products","PATCH",filterEq("id",productId),
+    {archived_at:input.archive?new Date().toISOString():null,updated_at:new Date().toISOString()},
+    {"Prefer":"return=representation"});
+  if(!rows?.[0])return error("Produto não encontrado.",404);
+  return reply({product:productView(rows[0])});
+}
 async function financeReport(env,url){
   const period=url.searchParams.get("period")||"today";
   if(!["today","week","month","all"].includes(period))return error("Período inválido.");
@@ -480,6 +493,8 @@ export default {
       if(path==="/api/admin/products"&&request.method==="POST")return saveProduct(request,env);
       const productEdit=path.match(/^\/api\/admin\/products\/([a-z0-9-]{2,70})$/);
       if(productEdit&&request.method==="PATCH")return saveProduct(request,env,productEdit[1]);
+      const archiveMatch=path.match(/^\/api\/admin\/products\/([a-z0-9-]{2,70})\/archive$/);
+      if(archiveMatch&&request.method==="PATCH")return archiveProduct(request,env,archiveMatch[1]);
       if(path==="/api/admin/finance"&&request.method==="GET")return financeReport(env,url);
       if(path==="/api/admin/customers"&&request.method==="GET")return customerReport(env);
       if(path==="/api/admin/site"&&request.method==="GET")return siteInfo(env);
