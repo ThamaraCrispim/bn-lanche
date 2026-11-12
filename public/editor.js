@@ -63,16 +63,25 @@
     const bottom=document.createElement("div");
     bottom.className="bn-editor-bottom";
     bottom.innerHTML='<p>Toque nas <b>canetinhas ✎</b> para editar. As alterações são publicadas ao salvar.</p>'+
+      '<button id="bn-cancel-edit" class="bn-cancel-edit" type="button">Cancelar</button>'+
       '<button id="bn-save-bottom" type="button">Salvar alterações</button>';
     document.body.append(bottom);
     $("bn-save-top").addEventListener("click",saveChanges);
     $("bn-save-bottom").addEventListener("click",saveChanges);
+    $("bn-cancel-edit").addEventListener("click",()=>{
+      if(dirty&&!confirm("Cancelar as alterações que ainda não foram salvas?"))return;
+      dirty=false;
+      location.assign("/admin.html");
+    });
     $("bn-view-as-customer").addEventListener("click",()=>{
       if(dirty&&!confirm("Há alterações ainda não salvas. Ver a página publicada mesmo assim?"))return;
       window.open("/","_blank","noopener,noreferrer");
     });
     $("bn-exit-editor").addEventListener("click",evt=>{
-      if(dirty&&!confirm("Sair sem salvar as alterações?"))evt.preventDefault();
+      if(dirty){
+        if(!confirm("Sair sem salvar as alterações?"))evt.preventDefault();
+        else dirty=false;
+      }
     });
   }
   function editableText(){
