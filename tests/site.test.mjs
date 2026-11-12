@@ -84,3 +84,27 @@ test("Worker usa Supabase no servidor sem expor chave secreta no frontend",()=>{
  assert.doesNotMatch(html,/SUPABASE_SECRET_KEY|sb_secret_/);
  assert.doesNotMatch(worker,/env\.DB/);
 });
+
+
+test("admin mostra menu e upload de fotos somente dentro da sessão",()=>{
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const admin=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  const worker=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
+  const client=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
+  for(const id of ["tab-products","products-pane","admin-products"])assert.ok(html.includes('id="'+id+'"'));
+  assert.match(admin,/image\/jpeg/);
+  assert.match(admin,/\/api\/admin\/products\//);
+  assert.match(worker,/if\(!\(await sessionUser\(request,env\)\)\)/);
+  assert.match(worker,/photoMatch&&request\.method==="POST"/);
+  assert.match(worker,/IMAGE_MAX_BYTES/);
+  assert.match(client,/\/api\/menu/);
+  assert.match(client,/p\.photoUrl/);
+});
+test("logomarca enviada substitui o monograma no site e no painel",()=>{
+  const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
+  const admin=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const icon=readFileSync(new URL("../public/icons/bn-original.svg",import.meta.url),"utf8");
+  assert.ok(html.includes("bn-original.svg"));
+  assert.ok(admin.includes("bn-original.svg"));
+  assert.ok(icon.includes("data:image/jpeg;base64,"));
+});
