@@ -91,7 +91,7 @@ test("admin mostra menu e upload de fotos somente dentro da sessão",()=>{
   const admin=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
   const worker=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
   const client=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
-  for(const id of ["tab-products","products-pane","admin-products"])assert.ok(html.includes('id="'+id+'"'));
+  for(const id of ["tab-site","site-pane","products-pane","admin-products"])assert.ok(html.includes('id="'+id+'"'));
   assert.match(admin,/image\/jpeg/);
   assert.match(admin,/\/api\/admin\/products\//);
   assert.match(worker,/if\(!\(await sessionUser\(request,env\)\)\)/);
@@ -107,4 +107,39 @@ test("logomarca enviada substitui o monograma no site e no painel",()=>{
   assert.ok(html.includes("bn-original.svg"));
   assert.ok(admin.includes("bn-original.svg"));
   assert.ok(icon.includes("data:image/jpeg;base64,"));
+});
+
+
+test("Editar app reúne cardápio, fotos, logomarca e capa em uma única aba",()=>{
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const js=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  const siteStart=html.indexOf('id="site-pane"');
+  const menuStart=html.indexOf('id="products-pane"');
+  assert.ok(siteStart>0&&menuStart>siteStart);
+  assert.doesNotMatch(html,/id="tab-products"/);
+  assert.match(html,/data-tab="site">Editar app/);
+  for(const id of ["site-preview","site-logo-file","site-cover-file","product-search","new-product","admin-products"])
+    assert.ok(html.includes('id="'+id+'"'),id+" ausente");
+  assert.match(js,/const paneKeys=\["orders","customers","finance","site"\]/);
+  assert.match(js,/tab==="site"&&!productsLoaded/);
+});
+test("Financeiro e clientes disponíveis apenas após autenticação",()=>{
+  const w=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  for(const route of ["/api/admin/finance","/api/admin/customers","/api/admin/site","/api/admin/products"])
+    assert.ok(w.includes(route),route+" ausente");
+  for(const id of ["finance-pane","customers-pane","finance-received","admin-customers"])
+    assert.ok(html.includes('id="'+id+'"'));
+  assert.ok(w.indexOf('if(!(await sessionUser(request,env)))')<w.indexOf('if(path==="/api/admin/finance"'));
+});
+test("Pedido mostra número real e opção de copiar comprovante, nunca número falso em demonstração",()=>{
+  const html=readFileSync(new URL("../public/index.html",import.meta.url),"utf8");
+  const js=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
+  for(const id of ["tracking-number","tracking-number-panel","tracking-copy","tracking-number-copy"])
+    assert.ok(html.includes('id="'+id+'"'));
+  assert.match(js,/Pedido #/);
+  assert.match(js,/navigator\.clipboard\.writeText/);
+  assert.match(js,/Nenhum pedido foi enviado ao BN/);
+  assert.match(js,/byId\("tracking-number-panel"\)\.hidden=true/);
+  assert.match(js,/loadSiteAppearance/);
 });
