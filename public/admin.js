@@ -66,7 +66,13 @@ $("admin-orders").addEventListener("click",async evt=>{
   try{await req("/api/admin/orders/"+id,"PATCH",{action});await refresh();}
   catch(e){alertUser(e.message);b.disabled=false;}
 });
-$("refresh-orders").addEventListener("click",refresh);
+$("refresh-orders").addEventListener("click",()=>{
+  const active=document.querySelector(".admin-tabs button.active")?.dataset.tab||"orders";
+  if(active==="orders")refresh();
+  if(active==="customers")loadCustomers();
+  if(active==="finance")loadFinance();
+  if(active==="site"){loadSite();loadProducts();}
+});
 $("orders-filter").addEventListener("change",refresh);
 $("logout").addEventListener("click",async()=>{try{await req("/api/admin/logout","POST",{});}catch{}setAuth(false);alertUser("");});
 
