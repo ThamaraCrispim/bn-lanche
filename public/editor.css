@@ -1,0 +1,64 @@
+/* Editor visual — carregado na pagina publica, visivel somente ao administrador autenticado */
+.bn-edit-mode{padding-bottom:110px}
+.bn-edit-mode .cart-button{display:none!important}
+.bn-editor-toolbar{position:sticky;top:0;z-index:1010;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px max(15px,calc((100vw - 1130px)/2));background:#201611;color:#fff;box-shadow:0 4px 16px #1c0e0a33}
+.bn-editor-toolbar-title{display:flex;gap:10px;align-items:center;min-width:0}
+.bn-editor-toolbar-title span{width:37px;height:37px;display:grid;place-items:center;background:#f7b54b;border-radius:10px;color:#2a190e;font-size:22px}
+.bn-editor-toolbar-title div{display:grid;gap:2px}.bn-editor-toolbar-title strong{font-size:14px}.bn-editor-toolbar-title small{color:#e1c9ad;font-size:11px}
+.bn-editor-toolbar-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.bn-editor-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;border-radius:9px;border:1px solid #655141;background:#3b2b24;color:#fff;font-size:12px;font-weight:850;padding:11px 12px;min-height:42px;cursor:pointer}
+.bn-editor-btn.primary-action{background:#f3bc66;border-color:#f3bc66;color:#2b190e}
+.bn-editor-btn:disabled{opacity:.6;cursor:wait}
+.bn-editor-dirty{font-size:10px;color:#ffdd9b;white-space:nowrap}
+.bn-editor-bottom{position:fixed;left:0;right:0;bottom:0;z-index:1009;background:#fffcf8;border-top:1px solid #e6d5c2;box-shadow:0 -7px 30px #1b0e081c;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 16px max(10px,env(safe-area-inset-bottom))}
+.bn-editor-bottom p{font-size:11px;color:#6b5b4f;line-height:1.35;margin:0;max-width:420px}
+.bn-editor-bottom button{border:0;border-radius:10px;background:#b92e25;color:#fff;font-size:13px;font-weight:900;padding:13px 20px;min-height:45px;white-space:nowrap}
+.bn-edit-mode [contenteditable=true]{outline:3px dashed #ffb739!important;outline-offset:6px;border-radius:3px;cursor:text!important;min-width:1em}
+.bn-edit-mode [contenteditable=true]:focus{outline:3px solid #ffb739!important;background:#ffffff13}
+.bn-edit-inline{display:inline-flex;vertical-align:middle;align-items:center;justify-content:center;border:0;background:#ffcb7a;color:#2d1909;width:28px;height:28px;min-width:28px;border-radius:8px;font-size:17px;box-shadow:0 4px 12px #0003;margin-left:9px;cursor:pointer;line-height:1}
+.bn-edit-inline:hover,.bn-edit-on-photo:hover,.bn-product-edit:hover{background:#f6dfad}
+.bn-edit-mode .brand{position:relative}
+.bn-logo-edit{position:absolute;right:-6px;bottom:-7px;z-index:10}
+.bn-logo-edit .bn-edit-inline{font-size:15px;margin:0}
+.bn-edit-mode .hero{position:relative}
+.bn-cover-tools{position:absolute;right:max(16px,calc((100vw - 1130px)/2));top:14px;display:flex;align-items:center;gap:7px;z-index:3}
+.bn-edit-on-photo{display:inline-flex;align-items:center;gap:6px;padding:9px 12px;background:#ffcb7a;color:#2d1909;border:0;border-radius:9px;font-size:12px;font-weight:900;box-shadow:0 4px 12px #0004;cursor:pointer}
+.bn-edit-image-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden}
+.bn-edit-photo-reset{background:#271a14d9;color:white;border:1px solid #e9b77366;border-radius:9px;padding:9px 12px;font-weight:750;font-size:11px;cursor:pointer}
+.bn-edit-mode .product{position:relative}
+.bn-product-edit{position:absolute;top:10px;right:10px;z-index:2;display:grid;place-items:center;width:35px;height:35px;border:0;border-radius:10px;background:#ffcb7a;color:#241507;font-size:18px;font-weight:900;box-shadow:0 4px 10px #0003}
+.bn-product-unavailable{font-size:10px;font-weight:900;color:#ad321f;background:#fff1e8;padding:6px 8px;border-radius:7px;display:inline-block}
+.bn-editor-add-product{border:2px dashed #bb7f40;background:#fff6e8;color:#714019;border-radius:13px;padding:12px 17px;font-size:13px;font-weight:900;cursor:pointer;margin-top:15px}
+.bn-editor-toast{position:fixed;top:85px;left:50%;transform:translateX(-50%);z-index:1100;background:#261b15;color:#fff;border-radius:12px;padding:12px 18px;box-shadow:0 7px 30px #0004;font-size:12px;font-weight:780;max-width:min(94vw,470px);text-align:center}
+.bn-editor-toast.is-error{background:#a12e23}
+.bn-editor-dialog{width:min(510px,calc(100vw - 24px));max-height:min(92dvh,830px);overflow:auto;padding:0;border:0;border-radius:18px;box-shadow:0 25px 90px #0007}
+.bn-editor-dialog::backdrop{background:#120c08b8}
+.bn-editor-dialog-header{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:12px;align-items:center;padding:18px 20px;background:#231812;color:#fff}
+.bn-editor-dialog-header strong{font-size:18px}
+.bn-editor-dialog-header button{background:#3b2a20;color:#fff;border:1px solid #765342;border-radius:10px;width:35px;height:35px;font-size:21px}
+.bn-editor-form{display:grid;gap:13px;padding:20px}
+.bn-editor-field{display:grid;gap:7px;color:#49382e;font-size:12px;font-weight:800}
+.bn-editor-field input,.bn-editor-field textarea,.bn-editor-field select{display:block;width:100%;border:1px solid #ded5cb;border-radius:10px;padding:13px 12px;background:#fff;color:#2d211b;font:inherit;font-weight:450}
+.bn-editor-field textarea{min-height:85px;resize:vertical}
+.bn-editor-form .bn-editor-preview{height:145px;border-radius:12px;background:#f2e5d5;display:grid;place-items:center;overflow:hidden}
+.bn-editor-form .bn-editor-preview img{width:100%;height:100%;object-fit:contain}
+.bn-editor-form .bn-editor-preview span{font-size:40px}
+.bn-editor-form footer{display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:-20px;background:#fff;padding:13px 0}
+.bn-editor-form footer button{border:0;padding:13px 17px;border-radius:10px;font-size:13px;font-weight:900;min-height:45px;background:#ba3023;color:white;flex:1}
+.bn-editor-form footer button.secondary{background:#f1e9dd;color:#5d3d2e}
+.bn-editor-availability{display:flex;align-items:center;gap:10px;font-size:12px;color:#514034;font-weight:800}
+.bn-editor-availability input{width:18px;height:18px}
+.bn-edit-mode .site-nav{top:0}
+@media(max-width:650px){
+.bn-editor-toolbar{flex-wrap:wrap;padding:7px 12px;gap:7px}
+.bn-editor-toolbar-title strong{font-size:12px}.bn-editor-toolbar-title small{font-size:10px}
+.bn-editor-toolbar-actions{justify-content:space-between;width:100%}.bn-editor-btn{font-size:11px;padding:8px 10px;min-height:35px}
+.bn-editor-bottom{padding:9px 12px max(10px,env(safe-area-inset-bottom))}.bn-editor-bottom p{font-size:10px}.bn-editor-bottom button{font-size:12px;padding:11px 13px;min-height:42px}
+.bn-edit-inline{margin-left:5px;width:26px;height:26px;min-width:26px}
+.bn-cover-tools{top:10px;right:10px}
+.bn-edit-on-photo{padding:8px 10px;font-size:11px}
+.bn-editor-toast{top:125px}
+.bn-edit-mode .hero .hero-inner{padding-top:74px}
+.bn-edit-mode .brand{padding-right:17px}
+}
+@media(max-width:390px){.bn-editor-toolbar-title small{display:none}.bn-editor-bottom p{max-width:145px}}
