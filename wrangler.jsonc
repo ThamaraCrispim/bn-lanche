@@ -11,6 +11,7 @@
   },
   "keep_vars": true,
   "vars": {
-    "SUPABASE_URL": "https://wmtgqompgrthddznazdz.supabase.co"
+    "SUPABASE_URL": "https://wmtgqompgrthddznazdz.supabase.co",
+    "ORDERS_ENABLED": "true"
   }
 }
