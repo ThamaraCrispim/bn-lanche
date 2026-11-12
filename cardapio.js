@@ -269,7 +269,7 @@ async function loadMenuPhotos(){
     if(document.body.classList.contains("bn-edit-mode"))return;
     if(!Array.isArray(data.products))return;
     const valid=data.products.filter(p=>p&&typeof p.id==="string"&&typeof p.name==="string"&&Number.isInteger(p.cents)&&p.cents>0);
-    if(valid.length===0)return;
+    // Lista vazia significa cardápio sem produtos disponíveis, não produtos antigos.
     const safe=valid.map(p=>({
       id:p.id,name:p.name,cents:p.cents,category:p.category,desc:p.desc||"",available:p.available,
       photoUrl:typeof p.photoUrl==="string" && p.photoUrl.startsWith("https://wmtgqompgrthddznazdz.supabase.co/storage/v1/object/public/bn-menu/")?p.photoUrl:null
