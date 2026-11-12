@@ -176,3 +176,48 @@ test("capa personalizada oculta o hamburguinho ilustrativo para nao sobrepor a f
   assert.match(css,/\.hero\.has-cover\s+\.burger\{display:none\}/);
   assert.doesNotMatch(css,/\.hero\.has-cover\s+\.burger\{opacity:/);
 });
+
+
+test("pedidos WhatsApp: somente admin recebe telefone e mensagem pronta exige clique",()=>{
+  const server=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
+  const admin=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  const css=readFileSync(new URL("../public/admin.css",import.meta.url),"utf8");
+  assert.match(server,/function adminOrderDto\(row\)\{return \{\.\.\.orderDto\(row\),phone:row\.phone\};\}/);
+  assert.match(server,/\.map\(adminOrderDto\)/);
+  assert.match(server,/if\(!\(await sessionUser\(request,env\)\)\)return error\("Entre como administrador\.",401\)/);
+  const dto=server.slice(server.indexOf("function orderDto(row)"),server.indexOf("function adminOrderDto(row)"));
+  assert.doesNotMatch(dto,/phone:/);
+  assert.match(admin,/function whatsappMessage\(o\)/);
+  assert.match(admin,/Seu pedido \*#/);
+  assert.match(admin,/PRONTO PARA RETIRADA/);
+  assert.match(admin,/https:\/\/wa\.me\/55/);
+  assert.match(admin,/encodeURIComponent\(whatsappMessage\(o\)\)/);
+  assert.match(admin,/target="_blank" rel="noopener noreferrer"/);
+  assert.match(admin,/Confira e toque em enviar/);
+  assert.match(css,/\.admin-whatsapp/);
+});
+
+test("cadastro e exclusao logica de produtos preservam historico de pedidos",()=>{
+  const worker=readFileSync(new URL("../src/worker.js",import.meta.url),"utf8");
+  const admin=readFileSync(new URL("../public/admin.js",import.meta.url),"utf8");
+  const visual=readFileSync(new URL("../public/editor.js",import.meta.url),"utf8");
+  const html=readFileSync(new URL("../public/admin.html",import.meta.url),"utf8");
+  const client=readFileSync(new URL("../public/cardapio.js",import.meta.url),"utf8");
+  assert.match(worker,/async function archiveProduct\(request,env,productId\)/);
+  assert.match(worker,/archived_at:input\.archive\?new Date\(\)\.toISOString\(\):null/);
+  assert.match(worker,/archived_at=is\.null/);
+  assert.match(worker,/p\.archived_at/);
+  assert.match(worker,/archiveMatch&&request\.method==="PATCH"/);
+  assert.doesNotMatch(worker,/dbRequest\(env,"bn_products","DELETE"/);
+  assert.ok(html.includes('id="quick-new-product"'));
+  assert.ok(html.includes('id="show-archived-products"'));
+  assert.match(admin,/data-archive-product/);
+  assert.match(admin,/show-archived-products/);
+  assert.match(admin,/archive","PATCH",\{archive\}/);
+  assert.match(visual,/id="bn-p-archive"/);
+  assert.match(visual,/async function archiveCurrentProduct/);
+  assert.match(visual,/id="bn-add-new-product"/);
+  assert.match(visual,/title\.insertAdjacentElement\("afterend",add\)/);
+  assert.match(client,/archivedAt:p\.archivedAt\|\|null/);
+  assert.doesNotMatch(client,/if\(valid\.length===0\)return/);
+});
