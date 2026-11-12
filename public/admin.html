@@ -44,7 +44,21 @@
       <p class="finance-note">Este painel não consulta a conta bancária: ele mostra apenas o que foi registrado como pago dentro do aplicativo.</p>
     </section>
     <section id="site-pane" hidden>
-      <div class="site-edit-head"><div><h2>Personalizar aplicativo</h2><p>Edite a capa, a logomarca e os textos. Veja a página completa ao lado sem sair do administrador.</p></div><a class="action-outline" target="_blank" rel="noopener" href="/">Abrir página inteira <span aria-hidden="true">↗</span></a></div>
+      <div class="visual-launch">
+        <div class="visual-launch-copy">
+          <span class="visual-launch-eyebrow">EDITOR VISUAL</span>
+          <h2>Edite o site do jeito que o cliente vê</h2>
+          <p>Abra a página completa e toque nas canetinhas para alterar logomarca, capa, textos, produtos e fotos. Nenhuma alteração será mostrada aos clientes antes de salvar.</p>
+          <a href="/?editar=1" id="open-visual-editor" class="visual-launch-button"><span aria-hidden="true">✎</span> Abrir editor visual</a>
+        </div>
+        <div class="visual-launch-example" aria-hidden="true">
+          <div class="visual-mini-top"><img src="/icons/bn-original.svg" alt=""><span>BN LANCHES</span><b>✎</b></div>
+          <div class="visual-mini-cover"><span>Seu lanche favorito</span><b>✎</b></div>
+          <div class="visual-mini-menu"><span>🍔 X-Burguer</span><b>✎</b></div>
+        </div>
+      </div>
+      <details class="visual-advanced" id="site-advanced"><summary>Configurações detalhadas (opcional)</summary>
+      <div class="site-edit-head"><div><h2>Ajustes detalhados</h2><p>Use estes campos somente se preferir editar cada informação pelo formulário.</p></div><a class="action-outline" target="_blank" rel="noopener" href="/">Abrir página inteira <span aria-hidden="true">↗</span></a></div>
       <div class="site-editor-layout">
         <div class="site-editor-settings">
           <form id="site-settings-form" class="site-edit-form">
@@ -59,8 +73,9 @@
           <section class="site-media-editor"><h3>Logomarca</h3><div id="site-logo-thumb" class="site-logo-thumb"></div><label for="site-logo-file">Escolher logomarca (JPG, PNG ou WebP, até 2 MB)</label><input id="site-logo-file" type="file" accept="image/jpeg,image/png,image/webp"><div class="site-media-actions"><button type="button" id="save-site-logo">Salvar logomarca</button><button type="button" id="reset-site-logo" class="ghost">Restaurar original</button></div></section>
           <section class="site-media-editor"><h3>Foto de capa</h3><div id="site-cover-thumb" class="site-cover-thumb"><span>Sem capa personalizada</span></div><label for="site-cover-file">Escolher capa (JPG, PNG ou WebP, até 5 MB)</label><input id="site-cover-file" type="file" accept="image/jpeg,image/png,image/webp"><div class="site-media-actions"><button type="button" id="save-site-cover">Salvar capa</button><button type="button" id="reset-site-cover" class="ghost">Remover capa</button></div></section>
         </div>
-        <div class="site-live-preview"><div class="site-preview-toolbar"><strong>Prévia da página inteira</strong><div><button id="preview-mobile" type="button">Celular</button><button id="preview-desktop" type="button" class="active">Computador</button></div></div><div class="site-preview-frame" id="site-preview-frame"><iframe id="site-preview" title="Prévia completa do cardápio BN Lanches" loading="lazy" src="/?preview=1"></iframe></div><p>A prévia pode ser rolada até o fim. As alterações são mostradas após salvar.</p></div>
+        <div class="site-live-preview"><div class="site-preview-toolbar"><strong>Prévia da página inteira</strong><div><button id="preview-mobile" type="button" class="active">Celular</button><button id="preview-desktop" type="button">Computador</button></div></div><div class="site-preview-frame is-mobile" id="site-preview-frame"><iframe id="site-preview" title="Prévia completa do cardápio BN Lanches" loading="lazy" src="/?preview=1"></iframe></div><p>A prévia pode ser rolada até o fim. As alterações são mostradas após salvar.</p></div>
       </div>
+      </details>
       <section id="products-pane" class="site-product-area"><div class="admin-menu-head"><div><h3>Produtos do cardápio e fotos</h3><p>Adicione produtos, atualize preços e descrições, controle disponibilidade e envie fotos (JPG, PNG ou WebP, até 2 MB).</p></div><div class="admin-menu-controls"><input id="product-search" type="search" placeholder="Buscar lanche ou bebida..." aria-label="Buscar produto"><button id="new-product" class="admin-add-product" type="button">+ Novo produto</button></div></div><div id="admin-products" class="admin-products"></div><p id="products-empty" class="admin-empty" hidden>Nenhum produto encontrado.</p></section>
     </section>
   </section>
